@@ -8,6 +8,7 @@ class BalanceHeld(BaseModel):
     occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
     user_id: str    
     amount: int
+    payment_id: str 
 
 #balanced_updated
 class BalanceUpdated(BaseModel):
@@ -16,3 +17,4 @@ class BalanceUpdated(BaseModel):
     occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
     user_id: str    
     amount: int
+    payment_id: str

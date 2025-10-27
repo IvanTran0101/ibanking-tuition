@@ -10,6 +10,7 @@ class TuitionLocked(BaseModel):
     amount_due: int
     student_id: str | None = None
     term: str | None = None
+    payment_id: str
 
 #tuition_updated
 class TuitionUpdated(BaseModel):
