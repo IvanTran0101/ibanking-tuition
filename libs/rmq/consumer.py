@@ -1,8 +1,8 @@
 # libs/rmq/consumer.py
+import threading
 from typing import Callable, Dict, Any, Optional
 from .bus import declare_queue, start_consume
 
-# Registry nhỏ để dễ đăng ký nhiều handler
 class Subscription:
     def __init__(self, queue: str, routing_key: str,
                  handler: Callable[[Dict[str, Any], Dict[str, Any], str], None]):
@@ -20,12 +20,26 @@ def subscribe(queue: str,
                   dead_letter=dead_letter, prefetch=prefetch)
     return Subscription(queue, routing_key, handler)
 
-def run(subscriptions: list[Subscription]) -> None:
+# --- NEW: chạy mỗi subscription trên 1 thread ---
+_threads: list[threading.Thread] = []
+
+def run(subscriptions: list[Subscription], *, join: bool = False) -> None:
     """
-    Gọi khi service khởi động (có thể chạy mỗi subscription ở 1 thread nếu muốn).
-    Ở bản tối giản này chạy tuần tự – mở 1 consumer/blocking.
+    Khởi động tất cả consumer song song (mỗi queue 1 thread).
+    - join=True: dùng cho script/worker đứng độc lập (giữ process không thoát).
+    - join=False: dùng trong FastAPI (không block event loop của web server).
     """
-    # Nếu bạn muốn chạy song song nhiều queue:
-    # tạo thread cho mỗi subscription để start_consume(sub.queue, sub.handler)
+    global _threads
     for sub in subscriptions:
-        start_consume(sub.queue, sub.handler)
+        t = threading.Thread(
+            target=start_consume,
+            args=(sub.queue, sub.handler),
+            name=f"rmq-consumer:{sub.queue}",
+            daemon=True  # dừng theo process, tránh treo khi shutdown
+        )
+        t.start()
+        _threads.append(t)
+
+    if join:
+        for t in _threads:
+            t.join()
