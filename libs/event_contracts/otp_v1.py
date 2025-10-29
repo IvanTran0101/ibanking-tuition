@@ -5,7 +5,7 @@ import uuid, datetime as dt
 class OTPGenerated(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "otp_generated"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str    
     tuition_id: str
@@ -17,7 +17,7 @@ class OTPGenerated(BaseModel):
 class OTPSucceed(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "otp_succeed"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str    
     tuition_id: str
@@ -29,7 +29,7 @@ class OTPSucceed(BaseModel):
 class OTPExpired(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "otp_expired"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str  
     tuition_id: str

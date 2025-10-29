@@ -1,104 +1,215 @@
-# libs/http/client.py
 from __future__ import annotations
-import os, json, uuid
-from typing import Any, Dict, Optional
-import requests
 
-# Header constants
-CID_HEADER = "X-Correlation-Id"
-IDEMP_HEADER = "Idempotency-Key"
+"""HTTP client for sync/async calls with correlation-id and simple retries.
 
-def _gen_cid() -> str:
-    """Sinh correlation-id ngẫu nhiên nếu chưa có."""
-    return str(uuid.uuid4())
+Standardizes inter-service HTTP calls across services using httpx.
+"""
+
+import asyncio
+import os
+import time
+import uuid
+from typing import Any, Dict, Optional, TYPE_CHECKING
+
+try:
+    import httpx
+except Exception:  # pragma: no cover
+    httpx = None  # type: ignore
+
+if TYPE_CHECKING:
+    import httpx as _httpx  # type: ignore
+    ResponseT = _httpx.Response
+else:  # at runtime when httpx may be missing, keep a loose alias
+    ResponseT = Any
 
 
-class HttpError(Exception):
-    """Exception cho HTTP lỗi (status >= 400)."""
-    def __init__(self, status: int, url: str, body: Any, correlation_id: Optional[str] = None):
-        super().__init__(f"HTTP {status} {url} (cid={correlation_id})")
-        self.status = status
-        self.url = url
-        self.body = body
-        self.correlation_id = correlation_id
+DEFAULT_TIMEOUT = float(os.getenv("HTTP_CLIENT_TIMEOUT", "5.0"))
+DEFAULT_RETRIES = int(os.getenv("HTTP_CLIENT_RETRIES", "3"))
+BACKOFF_FACTOR = float(os.getenv("HTTP_CLIENT_BACKOFF", "0.2"))
+
+CORRELATION_HEADER = "correlation-id"
+
+
+def _build_url(base_url: str, url: str) -> str:
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    if not base_url:
+        return url
+    return f"{base_url.rstrip('/')}/{url.lstrip('/')}"
 
 
 class HttpClient:
-    """
-    Client cực gọn cho internal call giữa services.
-    - Hỗ trợ GET/POST/PUT/DELETE
-    - Auto JSON encode/decode
-    - Timeout
-    - Propagate X-Correlation-Id
-    - Optional Idempotency-Key
-    """
+    def __init__(
+        self,
+        base_url: str = "",
+        *,
+        default_headers: Optional[Dict[str, str]] = None,
+        timeout: float = DEFAULT_TIMEOUT,
+        retries: int = DEFAULT_RETRIES,
+    ) -> None:
+        if httpx is None:
+            raise RuntimeError("httpx is required for HttpClient; please install it.")
+        self.base_url = base_url
+        self.timeout = httpx.Timeout(timeout)
+        self.retries = max(1, retries)
+        self._default_headers = default_headers or {}
+        self._client = httpx.Client(timeout=self.timeout)
 
-    def __init__(self, base_url: str, *, timeout_sec: float = 5.0):
-        self.base_url = base_url.rstrip("/")
-        self.timeout_sec = timeout_sec
-        self.s = requests.Session()
-        self.s.headers.update({"Accept": "application/json"})
+    def _headers(self, headers: Optional[Dict[str, str]], correlation_id: Optional[str]) -> Dict[str, str]:
+        h = dict(self._default_headers)
+        if headers:
+            h.update(headers)
+        h.setdefault(CORRELATION_HEADER, correlation_id or str(uuid.uuid4()))
+        return h
 
-    # ---- generic request helper ----
-    def _request(self,
-                 method: str,
-                 path: str,
-                 *,
-                 params: Dict[str, Any] | None = None,
-                 json_body: Dict[str, Any] | None = None,
-                 headers: Dict[str, str] | None = None,
-                 correlation_id: str | None = None,
-                 idempotency_key: str | None = None) -> Any:
-
-        url = f"{self.base_url}/{path.lstrip('/')}"
-        hdrs = {**(headers or {})}
-
-        # Correlation-ID
-        cid = correlation_id or hdrs.get(CID_HEADER) or _gen_cid()
-        hdrs[CID_HEADER] = cid
-
-        # Idempotency-Key (nếu có)
-        if idempotency_key:
-            hdrs[IDEMP_HEADER] = idempotency_key
-
-        # JSON body
-        data = None
-        if json_body is not None:
-            hdrs.setdefault("Content-Type", "application/json")
-            data = json.dumps(json_body)
-
-        # Gửi request
-        resp = self.s.request(method, url, params=params, data=data, headers=hdrs, timeout=self.timeout_sec)
-
-        # Nếu lỗi → raise HttpError
-        if resp.status_code >= 400:
+    def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Any] = None,
+        headers: Optional[Dict[str, str]] = None,
+        correlation_id: Optional[str] = None,
+        retries: Optional[int] = None,
+    ) -> ResponseT:
+        if httpx is None:
+            raise RuntimeError("httpx is required for HttpClient; please install it.")
+        attempts = max(1, retries or self.retries)
+        last_exc: Optional[Exception] = None
+        full_url = _build_url(self.base_url, url)
+        for attempt in range(attempts):
             try:
-                body = resp.json()
-            except Exception:
-                body = resp.text
-            raise HttpError(resp.status_code, url, body, correlation_id=cid)
+                resp = self._client.request(
+                    method,
+                    full_url,
+                    params=params,
+                    json=json,
+                    headers=self._headers(headers, correlation_id),
+                )
+                resp.raise_for_status()
+                return resp
+            except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as ex:
+                last_exc = ex
+                if attempt >= attempts - 1:
+                    raise
+                time.sleep(BACKOFF_FACTOR * (2 ** attempt))
+        assert last_exc is not None
+        raise last_exc
 
-        # Decode JSON nếu có
-        if "application/json" in resp.headers.get("Content-Type", ""):
-            return resp.json()
-        return resp.text or None
+    def get(self, url: str, **kwargs: Any) -> ResponseT:
+        return self.request("GET", url, **kwargs)
 
-    # ---- public shortcut methods ----
-    def get(self, path: str, **kwargs): return self._request("GET", path, **kwargs)
-    def post(self, path: str, **kwargs): return self._request("POST", path, **kwargs)
-    def put(self, path: str, **kwargs): return self._request("PUT", path, **kwargs)
-    def delete(self, path: str, **kwargs): return self._request("DELETE", path, **kwargs)
+    def post(self, url: str, **kwargs: Any) -> ResponseT:
+        return self.request("POST", url, **kwargs)
+
+    def put(self, url: str, **kwargs: Any) -> ResponseT:
+        return self.request("PUT", url, **kwargs)
+
+    def delete(self, url: str, **kwargs: Any) -> ResponseT:
+        return self.request("DELETE", url, **kwargs)
+
+    def close(self) -> None:
+        self._client.close()
 
 
-# ---- factory helpers cho từng service (đọc ENV) ----
+class AsyncHttpClient:
+    def __init__(
+        self,
+        base_url: str = "",
+        *,
+        default_headers: Optional[Dict[str, str]] = None,
+        timeout: float = DEFAULT_TIMEOUT,
+        retries: int = DEFAULT_RETRIES,
+    ) -> None:
+        if httpx is None:
+            raise RuntimeError("httpx is required for AsyncHttpClient; please install it.")
+        self.base_url = base_url
+        self.timeout = httpx.Timeout(timeout)
+        self.retries = max(1, retries)
+        self._default_headers = default_headers or {}
+        self._client = httpx.AsyncClient(timeout=self.timeout)
+
+    def _headers(self, headers: Optional[Dict[str, str]], correlation_id: Optional[str]) -> Dict[str, str]:
+        h = dict(self._default_headers)
+        if headers:
+            h.update(headers)
+        h.setdefault(CORRELATION_HEADER, correlation_id or str(uuid.uuid4()))
+        return h
+
+    async def request(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Any] = None,
+        headers: Optional[Dict[str, str]] = None,
+        correlation_id: Optional[str] = None,
+        retries: Optional[int] = None,
+    ) -> ResponseT:
+        if httpx is None:
+            raise RuntimeError("httpx is required for AsyncHttpClient; please install it.")
+        attempts = max(1, retries or self.retries)
+        last_exc: Optional[Exception] = None
+        full_url = _build_url(self.base_url, url)
+        for attempt in range(attempts):
+            try:
+                resp = await self._client.request(
+                    method,
+                    full_url,
+                    params=params,
+                    json=json,
+                    headers=self._headers(headers, correlation_id),
+                )
+                resp.raise_for_status()
+                return resp
+            except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as ex:
+                last_exc = ex
+                if attempt >= attempts - 1:
+                    raise
+                await asyncio.sleep(BACKOFF_FACTOR * (2 ** attempt))
+        assert last_exc is not None
+        raise last_exc
+
+    async def get(self, url: str, **kwargs: Any) -> ResponseT:
+        return await self.request("GET", url, **kwargs)
+
+    async def post(self, url: str, **kwargs: Any) -> ResponseT:
+        return await self.request("POST", url, **kwargs)
+
+    async def put(self, url: str, **kwargs: Any) -> ResponseT:
+        return await self.request("PUT", url, **kwargs)
+
+    async def delete(self, url: str, **kwargs: Any) -> ResponseT:
+        return await self.request("DELETE", url, **kwargs)
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+
+# Factory helpers from env (sync clients)
 def make_account_client() -> HttpClient:
     return HttpClient(os.getenv("ACCOUNT_SERVICE_URL", "http://account-service:8080"))
+
 
 def make_payment_client() -> HttpClient:
     return HttpClient(os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8080"))
 
+
 def make_tuition_client() -> HttpClient:
     return HttpClient(os.getenv("TUITION_SERVICE_URL", "http://tuition-service:8080"))
 
+
 def make_otp_client() -> HttpClient:
     return HttpClient(os.getenv("OTP_SERVICE_URL", "http://otp-service:8080"))
+
+
+__all__ = [
+    "HttpClient",
+    "AsyncHttpClient",
+    "make_account_client",
+    "make_payment_client",
+    "make_tuition_client",
+    "make_otp_client",
+]

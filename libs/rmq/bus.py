@@ -9,8 +9,7 @@ DLX      = os.getenv("EVENT_DLX", "ibanking.dlx")               # dead-letter ex
 
 # Singleton connection/channel cho cả process
 class _Rmq:
-    _conn: Optional[pika.BlockingConnection] = None
-    _lock = threading.Lock()
+    _local = threading.local()
 
     @classmethod
     def _connect(cls) -> pika.BlockingConnection:
@@ -21,14 +20,15 @@ class _Rmq:
 
     @classmethod
     def channel(cls) -> pika.adapters.blocking_connection.BlockingChannel:
-        with cls._lock:
-            if cls._conn is None or cls._conn.is_closed:
-                cls._conn = cls._connect()
-            ch = cls._conn.channel()
-            # Topology: exchanges
-            ch.exchange_declare(exchange=EXCHANGE, exchange_type="topic", durable=True)
-            ch.exchange_declare(exchange=DLX, exchange_type="topic", durable=True)
-            return ch
+        conn: Optional[pika.BlockingConnection] = getattr(cls._local, "conn", None)
+        if conn is None or conn.is_closed:
+            conn = cls._connect()
+            cls._local.conn = conn
+        ch = conn.channel()
+        # Topology: exchanges
+        ch.exchange_declare(exchange=EXCHANGE, exchange_type="topic", durable=True)
+        ch.exchange_declare(exchange=DLX, exchange_type="topic", durable=True)
+        return ch
 
 def declare_queue(queue: str, routing_key: str, *,
                   dead_letter: bool = True,
@@ -47,10 +47,11 @@ def declare_queue(queue: str, routing_key: str, *,
     ch.queue_declare(queue=queue, durable=True, arguments=args)
     ch.queue_bind(queue=queue, exchange=EXCHANGE, routing_key=routing_key)
 
-    # DLQ
-    dlq = f"{queue}.dlq"
-    ch.queue_declare(queue=dlq, durable=True)
-    ch.queue_bind(queue=dlq, exchange=DLX, routing_key=routing_key)
+    # DLQ only when enabled
+    if dead_letter:
+        dlq = f"{queue}.dlq"
+        ch.queue_declare(queue=dlq, durable=True)
+        ch.queue_bind(queue=dlq, exchange=DLX, routing_key=routing_key)
 
     ch.basic_qos(prefetch_count=prefetch)
 

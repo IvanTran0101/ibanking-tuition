@@ -5,7 +5,7 @@ import uuid, datetime as dt
 class BalanceHeld(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "balance_held"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     user_id: str    
     amount: int
     payment_id: str 
@@ -14,7 +14,7 @@ class BalanceHeld(BaseModel):
 class BalanceUpdated(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "balance_updated"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     user_id: str    
     amount: int
     payment_id: str
@@ -23,7 +23,7 @@ class BalanceUpdated(BaseModel):
 class BalanceHoldFailed(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "balance_hold_failed"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     user_id: str   
     amount: int
     reason_code: str | None = None 
@@ -33,7 +33,7 @@ class BalanceHoldFailed(BaseModel):
 class BalanceReleased(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "balance_released"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     user_id: str   
     amount: int
     reason_code: str | None = None 

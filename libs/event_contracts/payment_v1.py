@@ -5,7 +5,7 @@ import uuid, datetime as dt
 class PaymentInitiated(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_initiated"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str    
     tuition_id: str
@@ -17,7 +17,7 @@ class PaymentInitiated(BaseModel):
 class PaymentProcessing(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_processing"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str    
     tuition_id: str
@@ -29,7 +29,7 @@ class PaymentProcessing(BaseModel):
 class PaymentAuthorized(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_authorized"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str  
     tuition_id: str  
@@ -41,7 +41,7 @@ class PaymentAuthorized(BaseModel):
 class PaymentCompleted(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_completed"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str  
     tuition_id: str  
@@ -53,7 +53,7 @@ class PaymentCompleted(BaseModel):
 class PaymentUnauthorized(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_unauthorized"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str   
     amount: int
@@ -66,7 +66,7 @@ class PaymentUnauthorized(BaseModel):
 class PaymentCanceled(BaseModel):
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = "payment_canceled"
-    occurred_at: str = Field(default_factory=lambda: dt.datetime.isoformat())
+    occurred_at: str = Field(default_factory=lambda: dt.datetime.utcnow().isoformat())
     payment_id: str
     user_id: str  
     amount: int
