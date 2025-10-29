@@ -44,6 +44,23 @@ services:
       - pgdata_payment:/var/lib/postgresql/data
       - ./payment_service/db/migrations:/docker-entrypoint-initdb.d
 
+  postgres_tuition:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: tuition_user
+      POSTGRES_PASSWORD: tuition_pass
+      POSTGRES_DB: tuition_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tuition_user -d tuition_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_tuition:/var/lib/postgresql/data
+      - ./tuition_service/db/migrations:/docker-entrypoint-initdb.d
+
   account_service:
     build:
       context: .
@@ -113,8 +130,11 @@ services:
       RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
+      TUITION_DATABASE_URL: "postgresql+psycopg2://tuition_user:tuition_pass@postgres_tuition:5432/tuition_db"
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      postgres_tuition:
         condition: service_healthy
     ports:
       - "8084:8080"
@@ -161,3 +181,4 @@ services:
 volumes:
   pgdata_account:
   pgdata_payment:
+  pgdata_tuition:
