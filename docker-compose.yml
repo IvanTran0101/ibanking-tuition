@@ -1,0 +1,163 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  postgres_account:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: account_user
+      POSTGRES_PASSWORD: account_pass
+      POSTGRES_DB: account_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U account_user -d account_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_account:/var/lib/postgresql/data
+      # Uncomment next line to auto-run SQL on first init (volume must be empty)
+      # - ./account_service/db/migrations:/docker-entrypoint-initdb.d
+
+  postgres_payment:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_pass
+      POSTGRES_DB: payment_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_payment:/var/lib/postgresql/data
+
+  account_service:
+    build:
+      context: .
+      dockerfile: account_service/Dockerfile
+    environment:
+      SERVICE_HOST: "0.0.0.0"
+      SERVICE_PORT: "8080"
+      ACCOUNT_DATABASE_URL: "postgresql+psycopg2://account_user:account_pass@postgres_account:5432/account_db"
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+      ACCOUNT_PAYMENT_QUEUE: "account.payment.q"
+      CONSUMER_PREFETCH: "32"
+      RK_PAYMENT_INITIATED: "payment.v1.initiated"
+      RK_PAYMENT_AUTHORIZED: "payment.v1.authorized"
+      RK_BALANCE_HELD: "account.v1.balance_held"
+      RK_BALANCE_HOLD_FAILED: "account.v1.balance_hold_failed"
+      RK_BALANCE_UPDATED: "account.v1.balance_updated"
+      RK_BALANCE_RELEASED: "account.v1.balance_released"
+      HOLD_EXPIRES_MIN: "15"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres_account:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+  authentication_service:
+    build:
+      context: .
+      dockerfile: authentication_service/Dockerfile
+    environment:
+      ACCOUNT_SERVICE_URL: "http://account_service:8080"
+      JWT_SECRET: "dev-secret"
+      JWT_ALG: "HS256"
+      JWT_EXPIRES_MIN: "60"
+      PASSWORD_SALT: "dev-salt"
+    depends_on:
+      account_service:
+        condition: service_started
+    ports:
+      - "8082:8080"
+
+  payment_service:
+    build:
+      context: .
+      dockerfile: payment_service/Dockerfile
+    environment:
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+      PAYMENT_DATABASE_URL: "postgresql+psycopg2://payment_user:payment_pass@postgres_payment:5432/payment_db"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres_payment:
+        condition: service_healthy
+    ports:
+      - "8083:8080"
+
+  tuition_service:
+    build:
+      context: .
+      dockerfile: tuition_service/Dockerfile
+    environment:
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8084:8080"
+
+  otp_service:
+    build:
+      context: .
+      dockerfile: otp_service/Dockerfile
+    environment:
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8085:8080"
+
+  notification_service:
+    build:
+      context: .
+      dockerfile: notification_service/Dockerfile
+    environment:
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8086:8080"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    environment: {}
+    ports:
+      - "8000:8080"
+    depends_on:
+      authentication_service:
+        condition: service_started
+
+volumes:
+  pgdata_account:
+  pgdata_payment:
