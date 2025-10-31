@@ -25,8 +25,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata_account:/var/lib/postgresql/data
-      # Uncomment next line to auto-run SQL on first init (volume must be empty)
-      # - ./account_service/db/migrations:/docker-entrypoint-initdb.d
+      - ./account_service/db/migrations:/docker-entrypoint-initdb.d
 
   postgres_payment:
     image: postgres:15
@@ -43,6 +42,7 @@ services:
       - "5433:5432"
     volumes:
       - pgdata_payment:/var/lib/postgresql/data
+      - ./payment_service/db/migrations:/docker-entrypoint-initdb.d
 
   account_service:
     build:
