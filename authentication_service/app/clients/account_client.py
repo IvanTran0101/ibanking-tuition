@@ -17,3 +17,7 @@ class AccountClient:
         # Endpoint path is a suggestion; adjust to match account service.
         resp = self._client.post("/internal/accounts/verify", json=payload)
         return resp.json()
+
+    def get_account(self, user_id: str) -> Dict[str, Any]:
+        resp = self._client.get(f"/internal/accounts/{user_id}")
+        return resp.json()

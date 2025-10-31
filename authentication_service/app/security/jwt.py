@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 
 from authentication_service.app.settings import settings
 
@@ -34,3 +34,31 @@ def create_access_token(subject: str, extra_claims: Dict[str, Any] | None = None
 
 def hash_password(password: str, salt: str) -> str:
     return hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
+
+
+def _b64url_decode(segment: str) -> bytes:
+    padding = '=' * (-len(segment) % 4)
+    return base64.urlsafe_b64decode(segment + padding)
+
+
+def verify_and_decode(token: str) -> Dict[str, Any]:
+    """
+    Verifies HMAC-SHA256 JWT and returns payload dict.
+    Raises ValueError on invalid/expired tokens.
+    """
+    try:
+        header_b64, payload_b64, sig_b64 = token.split('.')
+    except ValueError:
+        raise ValueError("invalid token format")
+
+    signing_input = f"{header_b64}.{payload_b64}".encode("ascii")
+    expected_sig = hmac.new(settings.JWT_SECRET.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    actual_sig = _b64url_decode(sig_b64)
+    if not hmac.compare_digest(expected_sig, actual_sig):
+        raise ValueError("invalid signature")
+
+    payload = json.loads(_b64url_decode(payload_b64))
+    now = int(time.time())
+    if "exp" in payload and int(payload["exp"]) < now:
+        raise ValueError("token expired")
+    return payload
