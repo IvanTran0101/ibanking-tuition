@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, status, Header
+from fastapi import APIRouter, HTTPException, status
 
 from authentication_service.app.schemas import LoginRequest, LoginResponse
-from authentication_service.app.security.jwt import create_access_token, hash_password, verify_and_decode
+from authentication_service.app.security.jwt import create_access_token, hash_password
 from authentication_service.app.settings import settings
 from authentication_service.app.clients.account_client import AccountClient
 
@@ -23,8 +23,6 @@ def login(body: LoginRequest) -> LoginResponse:
     user_id = result.get("user_id")
     token = create_access_token(subject=str(user_id or body.username))
     return LoginResponse(access_token=token)
-
-
 @router.get("/me")
 def me(authorization: str | None = Header(default=None)) -> dict:
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -40,7 +38,7 @@ def me(authorization: str | None = Header(default=None)) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     client = AccountClient()
-    profile = client.get_account(user_id)
+    profile = client.get_account(user_id, authorization=authorization)
     if not profile or not profile.get("ok"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Return only needed fields to UI

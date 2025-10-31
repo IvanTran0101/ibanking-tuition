@@ -18,6 +18,11 @@ class AccountClient:
         resp = self._client.post("/internal/accounts/verify", json=payload)
         return resp.json()
 
-    def get_account(self, user_id: str) -> Dict[str, Any]:
-        resp = self._client.get(f"/internal/accounts/{user_id}")
+    def get_account(self, user_id: str, *, authorization: Optional[str] = None, token: Optional[str] = None) -> Dict[str, Any]:
+        headers: Dict[str, str] | None = None
+        if authorization:
+            headers = {"Authorization": authorization}
+        elif token:
+            headers = {"Authorization": f"Bearer {token}"}
+        resp = self._client.get(f"/internal/accounts/{user_id}", headers=headers)
         return resp.json()

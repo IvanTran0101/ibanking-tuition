@@ -112,6 +112,18 @@ class HttpClient:
     def close(self) -> None:
         self._client.close()
 
+    # --- helpers to manage default headers (e.g., Authorization) ---
+    def set_default_headers(self, headers: Dict[str, str]) -> None:
+        """Merge given headers into this client's default headers."""
+        self._default_headers.update(headers or {})
+
+    def set_bearer_token(self, token: str | None) -> None:
+        """Set or clear the Authorization Bearer token for all requests."""
+        if token:
+            self._default_headers["Authorization"] = f"Bearer {token}"
+        else:
+            self._default_headers.pop("Authorization", None)
+
 
 class AsyncHttpClient:
     def __init__(
@@ -186,6 +198,18 @@ class AsyncHttpClient:
 
     async def aclose(self) -> None:
         await self._client.aclose()
+
+    # --- helpers to manage default headers (e.g., Authorization) ---
+    def set_default_headers(self, headers: Dict[str, str]) -> None:
+        """Merge given headers into this client's default headers."""
+        self._default_headers.update(headers or {})
+
+    def set_bearer_token(self, token: str | None) -> None:
+        """Set or clear the Authorization Bearer token for all requests."""
+        if token:
+            self._default_headers["Authorization"] = f"Bearer {token}"
+        else:
+            self._default_headers.pop("Authorization", None)
 
 
 # Factory helpers from env (sync clients)
