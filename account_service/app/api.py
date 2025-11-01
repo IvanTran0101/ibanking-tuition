@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,33 @@ def get_account(user_id: str, db: Session = Depends(get_db)) -> dict:
     row = db.execute(sql, {"uid": user_id}).mappings().first()
     if not row:
         return {"ok": False}
+    return {
+        "ok": True,
+        "user_id": row["user_id"],
+        "full_name": row["full_name"],
+        "phone_number": row["phone_number"],
+        "balance": row["balance"],
+        "username": row["username"],
+        "email": row["email"],
+    }
+
+
+@router.get("/accounts/me")
+def get_me(x_user_id: str | None = Header(default=None, alias="X-User-Id"), db: Session = Depends(get_db)) -> dict:
+    # Gateway should verify JWT and inject X-User-Id header
+    if not x_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing user context")
+
+    sql = text(
+        """
+        SELECT user_id::text AS user_id, full_name, phone_number, balance::float8 AS balance, username, email
+        FROM accounts
+        WHERE user_id = :uid
+        """
+    )
+    row = db.execute(sql, {"uid": x_user_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return {
         "ok": True,
         "user_id": row["user_id"],
