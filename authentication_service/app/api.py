@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Header
 
 from authentication_service.app.schemas import LoginRequest, LoginResponse
 from authentication_service.app.security.jwt import create_access_token, hash_password
+from libs.security.jwt import verify_and_decode
 from authentication_service.app.settings import settings
 from authentication_service.app.clients.account_client import AccountClient
 
