@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     )
 
     # Security
-    JWT_SECRET: str = Field(default="dev-secret", description="JWT HMAC secret")
+    JWT_SECRET: str = Field(..., description="JWT HMAC secret (read from ENV)")
     JWT_ALG: str = Field(default="HS256", description="JWT algorithm")
     JWT_EXPIRES_MIN: int = Field(default=60, description="Access token expiry in minutes")
     PASSWORD_SALT: str = Field(default="dev-salt", description="Salt for password hashing")
