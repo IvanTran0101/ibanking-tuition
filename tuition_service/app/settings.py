@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # Database (SQLAlchemy URL for PostgreSQL recommended)
     TUITION_DATABASE_URL: str = Field(
-        default="postgresql+psycopg2://account_user:account_pass@localhost:5432/account_db",
+        default="postgresql+psycopg2://tuition_user:tuition_pass@localhost:5432/tuition_db",
         description="Connection string to the Tuition service database",
     )
     DB_POOL_SIZE: int = Field(default=10)
