@@ -8,7 +8,7 @@ from otp_service.app.settings import settings
 
 def publish_otp_generated(
     *,
-    intent_id: str,
+    payment_id: str,
     user_id: str,
     account_id: Optional[str] = None,
     tuition_id: Optional[str] = None,
@@ -23,7 +23,7 @@ def publish_otp_generated(
     publish_event(
         routing_key=settings.RK_OTP_GENERATED,
         payload={
-            "intent_id": intent_id,
+            "payment_id": payment_id,
             "user_id": user_id,
             "account_id": account_id,
             "tuition_id": tuition_id,
@@ -48,7 +48,7 @@ def publish_otp_expired(
     publish_event(
         routing_key=settings.RK_OTP_EXPIRED,
         payload={
-            "intent_id": payment_id,
+            "payment_id": payment_id,
             "user_id": user_id,
             "reason_message": reason_message,
         },
@@ -71,7 +71,7 @@ def publish_otp_verified(
     publish_event(
         routing_key=settings.RK_OTP_VERIFIED,
         payload={
-            "intent_id": payment_id,
+            "payment_id": payment_id,
             "user_id": user_id,
             "verified_at": verified_at,
             "status": "verified"

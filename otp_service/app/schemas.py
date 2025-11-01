@@ -4,12 +4,11 @@ from typing import Optional
 
 class VerifyOTPRequest(BaseModel):
     otp_code: str
-    intent_id: str 
-    user_id: str
+    payment_id: str
 
 
 class OTPVerifiedData(BaseModel):
-    intent_id: str
+    payment_id: str
     user_id: str
     account_id: str | None = None
     tuition_id: str | None = None
