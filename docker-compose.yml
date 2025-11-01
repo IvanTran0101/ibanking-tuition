@@ -131,6 +131,15 @@ services:
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
       TUITION_DATABASE_URL: "postgresql+psycopg2://tuition_user:tuition_pass@postgres_tuition:5432/tuition_db"
+      TUITION_PAYMENT_QUEUE: "tuition.payment.q"
+      CONSUMER_PREFETCH: "32"
+      RK_PAYMENT_INITIATED: "payment.v1.initiated"
+      RK_PAYMENT_AUTHORIZED: "payment.v1.authorized"
+      RK_TUITION_LOCK: "tuition.v1.tuition_lock"
+      RK_TUITION_LOCK_FAILED: "tuition.v1.tuition_lock_failed"
+      RK_TUITION_UPDATED: "tuition.v1.tuition_updated"
+      RK_TUITION_UNLOCKED: "tuition.v1.tuition_unlocked"
+      HOLD_EXPIRES_MIN: "15"
     depends_on:
       rabbitmq:
         condition: service_healthy
