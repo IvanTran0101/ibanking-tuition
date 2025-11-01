@@ -156,8 +156,18 @@ services:
       RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
+      OTP_QUEUE: "otp.payment.q"
+      CONSUMER_PREFETCH: "32"
+      RK_PAYMENT_PROCESSING: "payment.v1.processing"
+      RK_OTP_GENERATED: "otp.v1.generated"
+      RK_OTP_SUCCEED: "otp.v1.succeed"
+      RK_OTP_EXPIRED: "otp.v1.expired"
+      OTP_TTL_SEC: "300"
+      OTP_LENGTH: "6"
     depends_on:
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8085:8080"
