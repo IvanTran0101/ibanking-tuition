@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from otp_service.app.cache import get_otp, del_otp
 from otp_service.app.settings import settings
-from libs.rmq.publisher import publish_event
+from otp_service.app.messaging.publisher import publish_otp_succeed, publish_otp_expired
 
 
 router = APIRouter()
@@ -30,15 +30,11 @@ def verify_otp(body: VerifyOtpRequest, x_user_id: str | None = Header(default=No
 
     # Success: clear cache and notify
     del_otp(body.payment_id)
-    publish_event(
-        routing_key=settings.RK_OTP_SUCCEED,
-        payload={
-            "payment_id": body.payment_id,
-            "user_id": rec.get("user_id"),
-            "tuition_id": rec.get("tuition_id"),
-            "amount": rec.get("amount"),
-        },
-        event_type="otp_succeed",
+    publish_otp_succeed(
+        payment_id=body.payment_id,
+        user_id=rec.get("user_id"),
+        tuition_id=rec.get("tuition_id"),
+        amount=rec.get("amount"),
     )
     return {"ok": True}
 

@@ -4,7 +4,7 @@ import random
 from typing import Dict, Any
 
 from libs.rmq.consumer import subscribe, run, Subscription
-from libs.rmq.publisher import publish_event
+from otp_service.app.messaging.publisher import publish_otp_generated
 from libs.rmq import bus as rmq_bus
 from otp_service.app.cache import set_otp
 from otp_service.app.settings import settings
@@ -29,15 +29,11 @@ def on_payment_processing(payload: Dict[str, Any], headers: Dict[str, Any], mess
         ttl_sec=settings.OTP_TTL_SEC,
     )
 
-    publish_event(
-        routing_key=settings.RK_OTP_GENERATED,
-        payload={
-            "payment_id": payment_id,
-            "user_id": user_id,
-            "tuition_id": tuition_id,
-            "amount": amount,
-        },
-        event_type="otp_generated",
+    publish_otp_generated(
+        payment_id=payment_id,
+        user_id=user_id,
+        tuition_id=tuition_id,
+        amount=amount,
         correlation_id=(headers or {}).get("correlation-id"),
     )
 
