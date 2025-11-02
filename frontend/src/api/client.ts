@@ -23,9 +23,15 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return url.toString();
 }
 
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.$?*|{}()\[\]\\/+^]/g, "\\$&") + "=([^;]*)"));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function authHeader(requireAuth?: boolean): Record<string, string> {
   if (!requireAuth) return {};
-  const token = localStorage.getItem("access_token");
+  const token = getCookie("access_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
