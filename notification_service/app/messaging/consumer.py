@@ -46,7 +46,12 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
     if not user_id or not payment_id:
         return
     
-    user_email = f"{user_id}@example.com"  # TODO: Lookup real email
+    # Use email provided directly in the event payload
+    email_in_payload = payload.get("email")
+    user_email = email_in_payload if isinstance(email_in_payload, str) and "@" in email_in_payload else None
+
+    if not user_email:
+        return
     
     if event_type == "otp_generated":
         otp = payload.get("otp")

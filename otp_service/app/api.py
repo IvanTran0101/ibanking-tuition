@@ -30,6 +30,7 @@ def verify_otp(body: VerifyOTPRequest, x_user_id: str | None = Header(default=No
         user_id=rec.get("user_id"),
         tuition_id=rec.get("tuition_id"),
         amount=rec.get("amount"),
+        email=rec.get("email"),
     )
     return {"ok": True}
 

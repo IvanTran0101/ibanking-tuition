@@ -50,6 +50,7 @@ def _try_finalize(payment_id: str, correlation_id: str | None = None) -> None:
         user_id=intent.get("user_id"),
         tuition_id=intent.get("tuition_id"),
         amount=intent.get("amount"),
+        email=intent.get("email"),
         correlation_id=correlation_id,
     )
 
@@ -63,12 +64,14 @@ def on_otp_succeed(payload: Dict[str, Any], headers: Dict[str, Any], message_id:
         return
 
     intent = update_intent(payment_id, {"status": "AUTHORIZED"})
+    intent = get_intent(payment_id) or {}
     # Publish payment_authorized to trigger account/tuition updates
     publish_payment_authorized(
         payment_id=payment_id,
         user_id=user_id,
         tuition_id=tuition_id,
         amount=amount,
+        email=intent.get("email"),
         correlation_id=(headers or {}).get("correlation-id"),
     )
 
@@ -87,6 +90,7 @@ def on_otp_expired(payload: Dict[str, Any], headers: Dict[str, Any], message_id:
         user_id=user_id or "",
         tuition_id=tuition_id,
         amount=amount,
+        email=(get_intent(payment_id) or {}).get("email"),
         correlation_id=(headers or {}).get("correlation-id"),
     )
 
@@ -95,7 +99,11 @@ def on_balance_updated(payload: Dict[str, Any], headers: Dict[str, Any], message
     payment_id = payload.get("payment_id")
     if not payment_id:
         return
-    intent = update_intent(payment_id, {"account_done": True})
+    patch: Dict[str, Any] = {"account_done": True}
+    email = payload.get("email")
+    if isinstance(email, str) and "@" in email:
+        patch["email"] = email
+    intent = update_intent(payment_id, patch)
     _try_finalize(payment_id, correlation_id=(headers or {}).get("correlation-id"))
 
 
@@ -119,6 +127,7 @@ def _try_finalize_cancel(payment_id: str, correlation_id: str | None = None) -> 
         user_id=intent.get("user_id", ""),
         reason_code="canceled",
         reason_message="Payment canceled",
+        email=intent.get("email"),
         correlation_id=correlation_id,
     )
     del_intent(payment_id)
@@ -128,7 +137,11 @@ def on_balance_released(payload: Dict[str, Any], headers: Dict[str, Any], messag
     payment_id = payload.get("payment_id")
     if not payment_id:
         return
-    update_intent(payment_id, {"release_done": True})
+    patch: Dict[str, Any] = {"release_done": True}
+    email = payload.get("email")
+    if isinstance(email, str) and "@" in email:
+        patch["email"] = email
+    update_intent(payment_id, patch)
     _try_finalize_cancel(payment_id, correlation_id=(headers or {}).get("correlation-id"))
 
 
@@ -157,6 +170,7 @@ def _try_start_processing(payment_id: str, correlation_id: str | None = None) ->
         tuition_id=intent.get("tuition_id", ""),
         amount=intent.get("amount", 0),
         term=intent.get("term"),
+        email=intent.get("email"),
         correlation_id=correlation_id,
     )
 
@@ -165,7 +179,11 @@ def on_balance_held(payload: Dict[str, Any], headers: Dict[str, Any], message_id
     payment_id = payload.get("payment_id")
     if not payment_id:
         return
-    update_intent(payment_id, {"account_held": True})
+    patch: Dict[str, Any] = {"account_held": True}
+    email = payload.get("email")
+    if isinstance(email, str) and "@" in email:
+        patch["email"] = email
+    update_intent(payment_id, patch)
     _try_start_processing(payment_id, correlation_id=(headers or {}).get("correlation-id"))
 
 

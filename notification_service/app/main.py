@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
-from tuition_service.app.api import router as api_router
-from tuition_service.app.messaging.consumer import start_consumers
+from payment_service.app.api import router as api_router
+from payment_service.app.messaging.consumer import start_consumers
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="tuition_service")
+    app = FastAPI(title="payment_service")
     app.include_router(api_router)
 
     @app.on_event("startup")

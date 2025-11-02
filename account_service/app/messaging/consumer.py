@@ -42,7 +42,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
     with session_scope() as db:
         # Lock account row
         acc = db.execute(
-            text("SELECT user_id, balance FROM accounts WHERE user_id = :uid FOR UPDATE"),
+            text("SELECT user_id, balance, email FROM accounts WHERE user_id = :uid FOR UPDATE"),
             {"uid": user_id},
         ).first()
         if not acc:
@@ -53,6 +53,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
                 reason_code="user_not_found",
                 reason_message="user_not_found",
                 correlation_id=(headers or {}).get("correlation-id"),
+                email="",
             )
             return
 
@@ -79,6 +80,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
                 reason_code="insufficient_funds",
                 reason_message="insufficient_funds",
                 correlation_id=(headers or {}).get("correlation-id"),
+                email=str(getattr(acc, "email", "")),
             )
             return
 
@@ -104,6 +106,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
         user_id=user_id,
         amount=amount,
         payment_id=payment_id,
+        email=str(getattr(acc, "email", "")),
         correlation_id=(headers or {}).get("correlation-id"),
     )
 
@@ -134,10 +137,20 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
             updated = True
 
     if updated:
+        # lookup email for user
+        email: str = ""
+        with session_scope() as db:
+            row = db.execute(text("SELECT email FROM accounts WHERE user_id=:uid"), {"uid": user_id}).first()
+            if row:
+                try:
+                    email = str(row[0])
+                except Exception:
+                    email = ""
         publish_balance_updated(
             user_id=user_id,
             amount=amount,
             payment_id=payment_id,
+            email=email,
             correlation_id=(headers or {}).get("correlation-id"),
         )
 
@@ -172,12 +185,22 @@ def _handle_payment_unauthorized(payload: Dict[str, Any], headers: Dict[str, Any
             }
 
     if to_publish:
+        # lookup email for user
+        email: str = ""
+        with session_scope() as db:
+            row = db.execute(text("SELECT email FROM accounts WHERE user_id=:uid"), {"uid": str(to_publish["user_id"]) }).first()
+            if row:
+                try:
+                    email = str(row[0])
+                except Exception:
+                    email = ""
         publish_balance_released(
             user_id=str(to_publish["user_id"]),
             amount=float(to_publish["amount"]),
             payment_id=str(payment_id),
             reason_code=reason_code,
             reason_message=reason_message,
+            email=email,
             correlation_id=(headers or {}).get("correlation-id"),
         )
 

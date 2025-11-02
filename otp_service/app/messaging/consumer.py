@@ -19,13 +19,14 @@ def on_payment_processing(payload: Dict[str, Any], headers: Dict[str, Any], mess
     user_id = payload.get("user_id")
     tuition_id = payload.get("tuition_id")
     amount = payload.get("amount")
+    email = payload.get("email")
     if not payment_id or not user_id or amount is None:
         return
 
     otp_code = _gen_otp(settings.OTP_LENGTH)
     set_otp(
         payment_id,
-        {"otp": otp_code, "user_id": user_id, "tuition_id": tuition_id, "amount": amount},
+        {"otp": otp_code, "user_id": user_id, "tuition_id": tuition_id, "amount": amount, "email": email},
         ttl_sec=settings.OTP_TTL_SEC,
     )
 
@@ -34,6 +35,7 @@ def on_payment_processing(payload: Dict[str, Any], headers: Dict[str, Any], mess
         user_id=user_id,
         tuition_id=tuition_id,
         amount=amount,
+        email=email,
         correlation_id=(headers or {}).get("correlation-id"),
     )
 
