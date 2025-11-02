@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any
 
 from libs.rmq import bus as rmq_bus
+from libs.http import HttpClient
 from notification_service.app.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -46,7 +48,25 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
     if not user_id or not payment_id:
         return
     
-    user_email = f"{user_id}@example.com"  # TODO: Lookup real email
+    # Prefer email from payload; fallback to Account Service lookup
+    email_in_payload = payload.get("email")
+    if isinstance(email_in_payload, str) and "@" in email_in_payload:
+        user_email = email_in_payload
+    else:
+        try:
+            client = HttpClient(os.getenv("ACCOUNT_SERVICE_URL", "http://account_service:8080"))
+            resp = client.get(
+                f"/internal/accounts/{user_id}",
+                correlation_id=(headers or {}).get("correlation-id"),
+            )
+            data = resp.json()
+            user_email = data.get("email") if data.get("ok") else None
+        except Exception as e:
+            logger.error(f"Failed to lookup email for user {user_id}: {e}")
+            user_email = None
+
+    if not user_email:
+        return
     
     if event_type == "otp_generated":
         otp = payload.get("otp")

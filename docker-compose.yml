@@ -207,6 +207,15 @@ services:
       RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
+      # SMTP settings for sending emails
+      SMTP_HOST: "smtp.gmail.com"
+      SMTP_PORT: "587"
+      SMTP_USER: "trananhm265@gmail.com"
+      SMTP_PASSWORD: "mtaixgkchrxwjmrt"
+      EMAIL_FROM: "trananhm265@gmail.com"
+      DRY_RUN: "false"
+      # Optional: explicit Account Service URL for email lookup fallback
+      ACCOUNT_SERVICE_URL: "http://account_service:8080"
     depends_on:
       rabbitmq:
         condition: service_healthy
