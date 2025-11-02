@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 
-from payment_service.app.api import router as api_router
-from payment_service.app.messaging.consumer import start_consumers
+from notification_service.app.messaging.consumer import start_consumers
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="payment_service")
-    app.include_router(api_router)
+    app = FastAPI(title="notification_service")
 
     @app.on_event("startup")
     def _startup() -> None:
