@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     OTP_TTL_SEC: int = Field(default=300)  # 5 minutes
     OTP_LENGTH: int = Field(default=6)
 
+    # Redis cache
+    REDIS_URL: str = Field(default="redis://redis:6379/0")
+    REDIS_POOL_SIZE: int = Field(default=10)
+
     class Config:
         env_file = ".env"
         case_sensitive = False

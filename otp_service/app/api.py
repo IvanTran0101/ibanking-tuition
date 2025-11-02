@@ -1,21 +1,16 @@
 from fastapi import APIRouter, HTTPException, status, Header
-from pydantic import BaseModel
 
 from otp_service.app.cache import get_otp, del_otp
 from otp_service.app.settings import settings
-from otp_service.app.messaging.publisher import publish_otp_succeed, publish_otp_expired
+from otp_service.app.messaging.publisher import publish_otp_succeed
+from otp_service.app.schemas import VerifyOTPRequest
 
 
 router = APIRouter()
 
 
-class VerifyOtpRequest(BaseModel):
-    payment_id: str
-    code: str
-
-
 @router.post("/otp/verify")
-def verify_otp(body: VerifyOtpRequest, x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> dict:
+def verify_otp(body: VerifyOTPRequest, x_user_id: str | None = Header(default=None, alias="X-User-Id")) -> dict:
     # Gateway should have verified JWT and injected X-User-Id
     if not x_user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing user context")
@@ -25,7 +20,7 @@ def verify_otp(body: VerifyOtpRequest, x_user_id: str | None = Header(default=No
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP not found or expired")
 
     # Compare code; UI handles rate limiting, no attempt tracking here
-    if str(rec.get("otp")) != str(body.code):
+    if str(rec.get("otp")) != str(body.otp_code):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OTP")
 
     # Success: clear cache and notify

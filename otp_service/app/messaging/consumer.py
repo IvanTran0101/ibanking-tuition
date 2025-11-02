@@ -1,9 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import random
 from typing import Dict, Any
 
-from libs.rmq.consumer import subscribe, run, Subscription
+from libs.rmq.consumer import run, Subscription
 from otp_service.app.messaging.publisher import publish_otp_generated
 from libs.rmq import bus as rmq_bus
 from otp_service.app.cache import set_otp
@@ -15,7 +15,7 @@ def _gen_otp(length: int) -> str:
 
 
 def on_payment_processing(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
-    payment_id = payload.get("payment_id") or payload.get("payment_id")
+    payment_id = payload.get("payment_id") 
     user_id = payload.get("user_id")
     tuition_id = payload.get("tuition_id")
     amount = payload.get("amount")
@@ -43,3 +43,4 @@ def start_consumers() -> None:
     rmq_bus.declare_queue(settings.OTP_QUEUE, settings.RK_PAYMENT_PROCESSING, dead_letter=True, prefetch=settings.CONSUMER_PREFETCH)
     subs: list[Subscription] = [Subscription(settings.OTP_QUEUE, settings.RK_PAYMENT_PROCESSING, on_payment_processing)]
     run(subs, join=False)
+
