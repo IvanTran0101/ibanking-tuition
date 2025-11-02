@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # Routing keys (subscribe)
     RK_PAYMENT_INITIATED: str = Field(default="payment.v1.initiated")
+    RK_PAYMENT_UNAUTHORIZED: str = Field(default="payment.v1.unauthorized")
     RK_PAYMENT_AUTHORIZED: str = Field(default="payment.v1.authorized")
 
     # Routing keys (publish)

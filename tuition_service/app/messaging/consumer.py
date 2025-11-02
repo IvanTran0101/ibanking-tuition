@@ -11,6 +11,7 @@ from tuition_service.app.messaging.publisher import (
     publish_tuition_locked,
     publish_tuition_lock_failed,
     publish_tuition_updated,
+    publish_tuition_unlocked,
 )
 from tuition_service.app.db import session_scope
 from tuition_service.app.settings import settings
@@ -22,6 +23,8 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any], message_id: st
         _handle_payment_initiated(payload, headers, message_id)
     elif event_type == "payment_authorized":
         _handle_payment_authorized(payload, headers, message_id)
+    elif event_type == "payment_unauthorized":
+        _handle_payment_unauthorized(payload, headers, message_id)
     else:
         # Unknown event: ignore idempotently
         return
@@ -178,6 +181,59 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
         )
 
 
+def _handle_payment_unauthorized(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
+    """
+    When a payment is unauthorized/expired, release the tuition lock.
+    1. Find the tuition row locked by payment_id
+    2. Set status back to UNLOCKED and clear lock fields
+    3. Publish tuition_unlocked for downstream
+    """
+    payment_id = payload.get("payment_id")
+    reason_code = payload.get("reason_code", "unauthorized")
+    reason_message = payload.get("reason_message", "Payment unauthorized or OTP expired")
+    if not payment_id:
+        return
+
+    tuition_data = None
+    with session_scope() as db:
+        tuition_data = db.execute(
+            text(
+                """
+                SELECT tuition_id, student_id, term_no, amount_due, status
+                FROM tuitions
+                WHERE payment_id = :pid
+                FOR UPDATE
+                """
+            ),
+            {"pid": payment_id},
+        ).mappings().first()
+
+        if tuition_data and tuition_data["status"] == "LOCKED":
+            db.execute(
+                text(
+                    """
+                    UPDATE tuitions
+                    SET status = 'UNLOCKED', payment_id = NULL, expires_at = NULL
+                    WHERE tuition_id = :tid AND student_id = :sid AND status = 'LOCKED'
+                    """
+                ),
+                {"tid": tuition_data["tuition_id"], "sid": tuition_data["student_id"]},
+            )
+
+    if tuition_data:
+        publish_tuition_unlocked(
+            student_id=tuition_data["student_id"],
+            tuition_id=tuition_data["tuition_id"],
+            term_no=tuition_data["term_no"],
+            amount_due=float(tuition_data["amount_due"]),
+            status="UNLOCKED",
+            payment_id=payment_id,
+            reason_code=reason_code,
+            reason_message=reason_message,
+            correlation_id=(headers or {}).get("correlation-id"),
+        )
+
+
 def start_consumers() -> None:
     # Declare queue and bind both routing keys
     rmq_bus.declare_queue(
@@ -193,6 +249,11 @@ def start_consumers() -> None:
         queue=settings.TUITION_PAYMENT_QUEUE, 
         exchange=settings.EVENT_EXCHANGE, 
         routing_key=settings.RK_PAYMENT_AUTHORIZED
+    )
+    ch.queue_bind(
+        queue=settings.TUITION_PAYMENT_QUEUE,
+        exchange=settings.EVENT_EXCHANGE,
+        routing_key=settings.RK_PAYMENT_UNAUTHORIZED,
     )
     
     # Start consuming

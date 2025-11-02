@@ -76,6 +76,7 @@ services:
       CONSUMER_PREFETCH: "32"
       RK_PAYMENT_INITIATED: "payment.v1.initiated"
       RK_PAYMENT_AUTHORIZED: "payment.v1.authorized"
+      RK_PAYMENT_UNAUTHORIZED: "payment.v1.unauthorized"
       RK_BALANCE_HELD: "account.v1.balance_held"
       RK_BALANCE_HOLD_FAILED: "account.v1.balance_hold_failed"
       RK_BALANCE_UPDATED: "account.v1.balance_updated"
@@ -114,6 +115,27 @@ services:
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
       PAYMENT_DATABASE_URL: "postgresql+psycopg2://payment_user:payment_pass@postgres_payment:5432/payment_db"
+      RK_TUITION_LOCK: tuition.v1.tuition_lock")
+      RK_TUITION_LOCK_FAILED: "tuition.v1.tuition_lock_failed"
+      RK_TUITION_UPDATED: "tuition.v1.tuition_updated"
+      RK_TUITION_UNLOCKED: "tuition.v1.tuition_unlocked"
+    
+      RK_BALANCE_HELD: "account.v1.balance_held"
+      RK_BALANCE_HOLD_FAILED: "account.v1.balance_hold_failed"
+      RK_BALANCE_UPDATED: "account.v1.balance_updated"
+      RK_BALANCE_RELEASED: "account.v1.balance_released"
+    
+      RK_OTP_GENERATED: "otp.v1.generated"
+      RK_OTP_SUCCEED: "otp.v1.succeed"
+      RK_OTP_EXPIRED: "otp.v1.expired"
+    
+    # Routing keys (publish)
+      RK_PAYMENT_INITIATED: "payment.v1.initiated"
+      RK_PAYMENT_PROCESSING: "payment.v1.processing"
+      RK_PAYMENT_AUTHORIZED: "payment.v1.authorized"
+      RK_PAYMENT_COMPLETED:  "payment.v1.completed"
+      RK_PAYMENT_CANCELED:   "payment.v1.canceled"
+      RK_PAYMENT_UNAUTHORIZED: "payment.v1.unauthorized"
       REDIS_URL: "redis://redis:6379/0"
     depends_on:
       rabbitmq:
@@ -138,6 +160,7 @@ services:
       CONSUMER_PREFETCH: "32"
       RK_PAYMENT_INITIATED: "payment.v1.initiated"
       RK_PAYMENT_AUTHORIZED: "payment.v1.authorized"
+      RK_PAYMENT_UNAUTHORIZED: "payment.v1.unauthorized"
       RK_TUITION_LOCK: "tuition.v1.tuition_lock"
       RK_TUITION_LOCK_FAILED: "tuition.v1.tuition_lock_failed"
       RK_TUITION_UPDATED: "tuition.v1.tuition_updated"
