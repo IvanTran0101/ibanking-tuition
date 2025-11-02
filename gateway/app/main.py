@@ -27,6 +27,7 @@ PAYMENT_URL = settings.PAYMENT_SERVICE_URL.rstrip("/")
 TUITION_URL = settings.TUITION_SERVICE_URL.rstrip("/")
 OTP_URL = settings.OTP_SERVICE_URL.rstrip("/")
 NOTIF_URL = settings.NOTIFICATION_SERVICE_URL.rstrip("/")
+AUTH_URL = settings.AUTHENTICATION_SERVICE_URL.rstrip("/")
 
 
 app = FastAPI(title="Gateway")
@@ -90,8 +91,20 @@ async def _proxy(request: Request, base_url: str, tail: str, *, require_auth: bo
     global _client
     assert _client is not None
 
+    # Allow unauthenticated access to service docs/openapi endpoints
+    normalized_tail = (tail or "").lstrip("/")
+    is_docs = (
+        request.method.upper() == "GET"
+        and (
+            normalized_tail == "docs"
+            or normalized_tail.startswith("docs/")
+            or normalized_tail == "redoc"
+            or normalized_tail.endswith("openapi.json")
+        )
+    )
+
     x_user_id = None
-    if require_auth:
+    if require_auth and not is_docs:
         x_user_id = await _require_user(request)
 
     cid = request.headers.get("correlation-id") or str(uuid.uuid4())
@@ -128,6 +141,10 @@ async def health() -> Dict[str, str]:
 
 @app.api_route("/account/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def proxy_account(path: str, request: Request) -> Response:
+    # Do not expose internal account endpoints via gateway
+    tail = (path or "").lstrip("/")
+    if tail.lower().startswith("internal/"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     return await _proxy(request, ACCOUNT_URL, path)
 
 
@@ -150,6 +167,48 @@ async def proxy_otp(path: str, request: Request) -> Response:
 async def proxy_notifications(path: str, request: Request) -> Response:
     # Usually safe to require auth here too; relax by passing require_auth=False if needed
     return await _proxy(request, NOTIF_URL, path)
+
+
+@app.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
+async def proxy_auth(path: str, request: Request) -> Response:
+    # Auth endpoints (login/refresh) must not require JWT
+    return await _proxy(request, AUTH_URL, path, require_auth=False)
+
+# Friendly alias: map /auth/login -> /authentication/login upstream
+@app.api_route("/auth/login", methods=["POST"])
+async def auth_login_alias(request: Request) -> Response:
+    return await _proxy(request, AUTH_URL, "authentication/login", require_auth=False)
+
+
+# ---- Explicit reverse-proxy endpoints (as requested) ----
+
+# Authentication
+@app.post("/auth/authentication/login")
+async def auth_login(request: Request) -> Response:
+    return await _proxy(request, AUTH_URL, "authentication/login", require_auth=False)
+
+
+@app.get("/account/accounts/me")
+async def account_me(request: Request) -> Response:
+    return await _proxy(request, ACCOUNT_URL, "accounts/me", require_auth=True)
+
+
+# Payment
+@app.post("/payment/payments/init")
+async def payment_init(request: Request) -> Response:
+    return await _proxy(request, PAYMENT_URL, "payments/init", require_auth=True)
+
+
+# OTP
+@app.post("/otp/otp/verify")
+async def otp_verify(request: Request) -> Response:
+    return await _proxy(request, OTP_URL, "otp/verify", require_auth=True)
+
+
+# Tuition
+@app.get("/tuition/tuition/{student_id}")
+async def tuition_get(student_id: str, request: Request) -> Response:
+    return await _proxy(request, TUITION_URL, f"tuition/{student_id}", require_auth=True)
 
 if __name__ == "__main__":
     import uvicorn
