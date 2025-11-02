@@ -115,7 +115,7 @@ services:
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
       PAYMENT_DATABASE_URL: "postgresql+psycopg2://payment_user:payment_pass@postgres_payment:5432/payment_db"
-      RK_TUITION_LOCK: tuition.v1.tuition_lock")
+      RK_TUITION_LOCK: "tuition.v1.tuition_lock"
       RK_TUITION_LOCK_FAILED: "tuition.v1.tuition_lock_failed"
       RK_TUITION_UPDATED: "tuition.v1.tuition_updated"
       RK_TUITION_UNLOCKED: "tuition.v1.tuition_unlocked"
@@ -226,9 +226,19 @@ services:
     build:
       context: .
       dockerfile: gateway/Dockerfile
-    environment: {}
+    environment:
+      SERVICE_HOST: "0.0.0.0"
+      SERVICE_PORT: "8080"
+      JWT_SECRET: "dev-secret"
+      JWT_ALG: "HS256"
+      ACCOUNT_SERVICE_URL: "http://account_service:8080"
+      PAYMENT_SERVICE_URL: "http://payment_service:8080"
+      TUITION_SERVICE_URL: "http://tuition_service:8080"
+      OTP_SERVICE_URL: "http://otp_service:8080"
+      NOTIFICATION_SERVICE_URL: "http://notification_service:8080"
     ports:
       - "8000:8080"
+    command: ["uvicorn", "gateway.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
     depends_on:
       authentication_service:
         condition: service_started

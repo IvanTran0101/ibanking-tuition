@@ -11,7 +11,7 @@ from payment_service.app.settings import settings
 
 # Create SQLAlchemy engine
 engine = create_engine(
-    settings.TUITION_DATABASE_URL,
+    settings.PAYMENT_DATABASE_URL,
     pool_pre_ping=True,
     pool_size=settings.DB_POOL_SIZE,
     echo=settings.DB_ECHO,
