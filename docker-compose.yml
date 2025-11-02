@@ -114,10 +114,13 @@ services:
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
       PAYMENT_DATABASE_URL: "postgresql+psycopg2://payment_user:payment_pass@postgres_payment:5432/payment_db"
+      REDIS_URL: "redis://redis:6379/0"
     depends_on:
       rabbitmq:
         condition: service_healthy
       postgres_payment:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8083:8080"

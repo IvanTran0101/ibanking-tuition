@@ -6,7 +6,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from account_service.app.settings import settings
+from tuition_service.app.settings import settings
 
 
 # Create SQLAlchemy engine

@@ -6,9 +6,7 @@ from typing import Dict, Any
 
 from sqlalchemy import text
 
-from libs.rmq import consumer as rmq_consumer
 from libs.rmq import bus as rmq_bus
-from libs.rmq.publisher import publish_event
 from tuition_service.app.messaging.publisher import (
     publish_tuition_locked,
     publish_tuition_lock_failed,
@@ -45,12 +43,12 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
         return
 
     with session_scope() as db:
-        # Lock tuition record
+        # Lock tuition record (row-level lock)
         tuition = db.execute(
             text(
                 """
                 SELECT t.tuition_id, t.student_id, t.term_no, t.amount_due, t.status
-                FROM tuition t
+                FROM tuitions t
                 WHERE t.tuition_id = :tid AND t.student_id = :sid
                 FOR UPDATE
                 """
@@ -72,16 +70,8 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
             )
             return
 
-        # Idempotency: check if lock already exists for this payment
-        existing_lock = db.execute(
-            text("SELECT status FROM tuition_locks WHERE payment_id = :pid"),
-            {"pid": payment_id}
-        ).first()
-        if existing_lock:
-            return
-
-        # Check if tuition is already paid or locked by another payment
-        if tuition["status"] not in ["PENDING", "UNPAID"]:
+        # Check if tuition is already locked or not in UNLOCKED state
+        if tuition["status"] != "UNLOCKED":
             publish_tuition_lock_failed(
                 student_id=student_id,
                 tuition_id=tuition_id,
@@ -110,29 +100,17 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
             )
             return
 
-        # Create lock
+        # Lock tuition on the same row and set payment_id + expires_at TTL
         expires_at = dt.datetime.utcnow() + dt.timedelta(minutes=settings.HOLD_EXPIRES_MIN)
         db.execute(
             text(
                 """
-                INSERT INTO tuition_locks (lock_id, tuition_id, student_id, amount, expires_at, status, payment_id)
-                VALUES (:lid, :tid, :sid, :amt, :exp, 'LOCKED', :pid)
+                UPDATE tuitions
+                SET status = 'LOCKED', payment_id = :pid, expires_at = :exp
+                WHERE tuition_id = :tid AND student_id = :sid AND status = 'UNLOCKED'
                 """
             ),
-            {
-                "lid": str(uuid.uuid4()),
-                "tid": tuition_id,
-                "sid": student_id,
-                "amt": amount,
-                "exp": expires_at,
-                "pid": payment_id,
-            },
-        )
-
-        # Update tuition status to LOCKED
-        db.execute(
-            text("UPDATE tuition SET status = 'LOCKED' WHERE tuition_id = :tid"),
-            {"tid": tuition_id}
+            {"pid": payment_id, "exp": expires_at, "tid": tuition_id, "sid": student_id},
         )
 
     publish_tuition_locked(
@@ -165,54 +143,36 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
     tuition_data = None
     
     with session_scope() as db:
-        # Check lock exists and is valid
-        lock = db.execute(
+        # Lock the tuition row by payment_id
+        tuition_data = db.execute(
             text(
                 """
-                SELECT amount, status 
-                FROM tuition_locks 
-                WHERE payment_id = :pid AND tuition_id = :tid AND student_id = :sid 
+                SELECT tuition_id, student_id, term_no, amount_due, status
+                FROM tuitions
+                WHERE payment_id = :pid AND tuition_id = :tid AND student_id = :sid
                 FOR UPDATE
                 """
             ),
             {"pid": payment_id, "tid": tuition_id, "sid": student_id},
         ).mappings().first()
-        
-        if lock and lock["status"] == "LOCKED":
-            # Get tuition info before updating
-            tuition_data = db.execute(
+
+        if tuition_data and tuition_data["status"] == "LOCKED":
+            # Mark as unlocked (paid) and optionally set amount_due to 0
+            db.execute(
                 text(
-                    """
-                    SELECT tuition_id, student_id, term_no, amount_due, status
-                    FROM tuition
-                    WHERE tuition_id = :tid
-                    FOR UPDATE
-                    """
+                    "UPDATE tuitions SET status='UNLOCKED', amount_due = 0 WHERE tuition_id = :tid"
                 ),
-                {"tid": tuition_id}
-            ).mappings().first()
-            
-            if tuition_data:
-                # Update tuition status to PAID
-                db.execute(
-                    text("UPDATE tuition SET status = 'PAID' WHERE tuition_id = :tid"),
-                    {"tid": tuition_id},
-                )
-                
-                # Capture the lock
-                db.execute(
-                    text("UPDATE tuition_locks SET status = 'CAPTURED' WHERE payment_id = :pid"),
-                    {"pid": payment_id},
-                )
-                updated = True
+                {"tid": tuition_id},
+            )
+            updated = True
 
     if updated and tuition_data:
         publish_tuition_updated(
             student_id=student_id,
             tuition_id=tuition_id,
             term_no=tuition_data["term_no"],
-            amount_due=tuition_data["amount_due"],
-            status="PAID",
+            amount_due=0,
+            status="UNLOCKED",
             payment_id=payment_id,
             correlation_id=(headers or {}).get("correlation-id"),
         )

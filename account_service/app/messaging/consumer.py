@@ -139,10 +139,6 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
         )
 
 
-def _publish_hold_failed(*args, **kwargs) -> None:
-    # Backward compat if referenced elsewhere; prefer dedicated publisher helpers.
-    publish_balance_hold_failed(*args, **kwargs)
-
 
 def start_consumers() -> None:
     # Declare a single queue and bind both routing keys
