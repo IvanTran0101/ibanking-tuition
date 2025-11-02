@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getAccountMe } from "../api/account";
 import { getTuitionByStudentId } from "../api/tuition";
 import { initPayment } from "../api/payment";
@@ -7,6 +7,7 @@ import { logout } from "../api/auth";
 export default function PaymentForm({ onLoggedOut }) {
   const [me, setMe] = useState(null);
   const [studentId, setStudentId] = useState("");
+  const lookupTimer = useRef(null);
   const [studentName, setStudentName] = useState("");
   const [tuitionAmount, setTuitionAmount] = useState("");
   const [tuitionId, setTuitionId] = useState("");
@@ -103,8 +104,19 @@ export default function PaymentForm({ onLoggedOut }) {
       <label>
         Student ID (MSSV)
         <div className="row">
-          <input value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="e.g., 523K0001" />
-          <button type="button" onClick={handleLookup} disabled={loading || !studentId} className="secondary">Lookup</button>
+          <input
+            value={studentId}
+            onInput={(e) => {
+              const v = e.target.value;
+              setStudentId(v);
+              if (lookupTimer.current) clearTimeout(lookupTimer.current);
+              // auto lookup after 5 seconds of inactivity
+              lookupTimer.current = setTimeout(() => {
+                handleLookup();
+              }, 5000);
+            }}
+            placeholder="e.g., 523K0001"
+          />
         </div>
       </label>
       <label>
@@ -129,4 +141,3 @@ export default function PaymentForm({ onLoggedOut }) {
     </form>
   );
 }
-
