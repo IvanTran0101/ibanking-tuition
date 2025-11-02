@@ -200,30 +200,18 @@ services:
       - "8085:8080"
 
   notification_service:
-  build:
-    context: .
-    dockerfile: notification_service/Dockerfile
-  environment:
-    RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
-    EVENT_EXCHANGE: "ibanking.events"
-    EVENT_DLX: "ibanking.dlx"
-    NOTIFICATION_QUEUE: "notification.events.q"
-    CONSUMER_PREFETCH: "32"
-    RK_OTP_GENERATED: "otp.v1.generated"
-    RK_PAYMENT_COMPLETED: "payment.v1.completed"
-    SMTP_HOST: "smtp.gmail.com"
-    SMTP_PORT: "587"
-    SMTP_USER: "your_email@gmail.com"
-    SMTP_PASSWORD: "your_app_password"
-    EMAIL_FROM: "noreply@ibanking.com"
-    DRY_RUN: "false"
-
-  depends_on:
-    rabbitmq:
-      condition: service_healthy
-
-  ports:
-    - "8086:8080"
+    build:
+      context: .
+      dockerfile: notification_service/Dockerfile
+    environment:
+      RABBIT_URL: "amqp://guest:guest@rabbitmq:5672/%2f"
+      EVENT_EXCHANGE: "ibanking.events"
+      EVENT_DLX: "ibanking.dlx"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "8086:8080"
 
   gateway:
     build:
