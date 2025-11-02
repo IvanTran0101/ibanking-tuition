@@ -115,7 +115,7 @@ services:
       EVENT_EXCHANGE: "ibanking.events"
       EVENT_DLX: "ibanking.dlx"
       PAYMENT_DATABASE_URL: "postgresql+psycopg2://payment_user:payment_pass@postgres_payment:5432/payment_db"
-      RK_TUITION_LOCK: tuition.v1.tuition_lock")
+      RK_TUITION_LOCK: "tuition.v1.tuition_lock"
       RK_TUITION_LOCK_FAILED: "tuition.v1.tuition_lock_failed"
       RK_TUITION_UPDATED: "tuition.v1.tuition_updated"
       RK_TUITION_UNLOCKED: "tuition.v1.tuition_unlocked"
