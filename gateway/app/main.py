@@ -139,47 +139,6 @@ async def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
-@app.api_route("/account/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_account(path: str, request: Request) -> Response:
-    # Do not expose internal account endpoints via gateway
-    tail = (path or "").lstrip("/")
-    if tail.lower().startswith("internal/"):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-    return await _proxy(request, ACCOUNT_URL, path)
-
-
-@app.api_route("/payment/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_payment(path: str, request: Request) -> Response:
-    return await _proxy(request, PAYMENT_URL, path)
-
-
-@app.api_route("/tuition/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_tuition(path: str, request: Request) -> Response:
-    return await _proxy(request, TUITION_URL, path)
-
-
-@app.api_route("/otp/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_otp(path: str, request: Request) -> Response:
-    return await _proxy(request, OTP_URL, path)
-
-
-@app.api_route("/notifications/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_notifications(path: str, request: Request) -> Response:
-    # Usually safe to require auth here too; relax by passing require_auth=False if needed
-    return await _proxy(request, NOTIF_URL, path)
-
-
-@app.api_route("/auth/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
-async def proxy_auth(path: str, request: Request) -> Response:
-    # Auth endpoints (login/refresh) must not require JWT
-    return await _proxy(request, AUTH_URL, path, require_auth=False)
-
-# Friendly alias: map /auth/login -> /authentication/login upstream
-@app.api_route("/auth/login", methods=["POST"])
-async def auth_login_alias(request: Request) -> Response:
-    return await _proxy(request, AUTH_URL, "authentication/login", require_auth=False)
-
-
 # ---- Explicit reverse-proxy endpoints (as requested) ----
 
 # Authentication

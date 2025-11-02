@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     TUITION_SERVICE_URL: str = Field(default="http://tuition_service:8080")
     OTP_SERVICE_URL: str = Field(default="http://otp_service:8080")
     NOTIFICATION_SERVICE_URL: str = Field(default="http://notification_service:8080")
+    AUTHENTICATION_SERVICE_URL: str = Field(default="http://authentication_service:8080")
 
     # CORS & HTTP client
     CORS_ALLOW_ORIGINS: str = Field(default="*")
