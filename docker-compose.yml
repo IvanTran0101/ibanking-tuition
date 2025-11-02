@@ -226,9 +226,19 @@ services:
     build:
       context: .
       dockerfile: gateway/Dockerfile
-    environment: {}
+    environment:
+      SERVICE_HOST: "0.0.0.0"
+      SERVICE_PORT: "8080"
+      JWT_SECRET: "dev-secret"
+      JWT_ALG: "HS256"
+      ACCOUNT_SERVICE_URL: "http://account_service:8080"
+      PAYMENT_SERVICE_URL: "http://payment_service:8080"
+      TUITION_SERVICE_URL: "http://tuition_service:8080"
+      OTP_SERVICE_URL: "http://otp_service:8080"
+      NOTIFICATION_SERVICE_URL: "http://notification_service:8080"
     ports:
       - "8000:8080"
+    command: ["uvicorn", "gateway.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
     depends_on:
       authentication_service:
         condition: service_started
