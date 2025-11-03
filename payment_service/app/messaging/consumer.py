@@ -195,6 +195,44 @@ def on_tuition_lock(payload: Dict[str, Any], headers: Dict[str, Any], message_id
     _try_start_processing(payment_id, correlation_id=(headers or {}).get("correlation-id"))
 
 
+def on_balance_hold_failed(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
+    payment_id = payload.get("payment_id")
+    user_id = payload.get("user_id") or ""
+    if not payment_id:
+        return
+    # Publish unauthorized so services can release/unlock; cancel later when both done
+    intent = get_intent(payment_id) or {}
+    update_intent(payment_id, {"status": "UNAUTHORIZED"})
+    publish_payment_unauthorized(
+        payment_id=payment_id,
+        user_id=user_id,
+        tuition_id=payload.get("tuition_id"),
+        amount=payload.get("amount"),
+        email=intent.get("email"),
+        correlation_id=(headers or {}).get("correlation-id"),
+    )
+    
+
+
+def on_tuition_lock_failed(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
+    payment_id = payload.get("payment_id")
+    user_id = payload.get("user_id") or ""
+    if not payment_id:
+        return
+    # Publish unauthorized so services can release/unlock; cancel later when both done
+    intent = get_intent(payment_id) or {}
+    update_intent(payment_id, {"status": "UNAUTHORIZED"})
+    publish_payment_unauthorized(
+        payment_id=payment_id,
+        user_id=user_id,
+        tuition_id=payload.get("tuition_id"),
+        amount=payload.get("amount"),
+        email=intent.get("email"),
+        correlation_id=(headers or {}).get("correlation-id"),
+    )
+    
+
+
 def start_consumers() -> None:
     # One queue for payment events
     rmq_bus.declare_queue(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_OTP_SUCCEED, dead_letter=True, prefetch=settings.CONSUMER_PREFETCH)
@@ -207,6 +245,9 @@ def start_consumers() -> None:
     ch.queue_bind(queue=settings.PAYMENT_PAYMENT_QUEUE, exchange=settings.EVENT_EXCHANGE, routing_key=settings.RK_TUITION_UNLOCKED)
     ch.queue_bind(queue=settings.PAYMENT_PAYMENT_QUEUE, exchange=settings.EVENT_EXCHANGE, routing_key=settings.RK_BALANCE_HELD)
     ch.queue_bind(queue=settings.PAYMENT_PAYMENT_QUEUE, exchange=settings.EVENT_EXCHANGE, routing_key=settings.RK_TUITION_LOCK)
+    # Bind failure events as well
+    ch.queue_bind(queue=settings.PAYMENT_PAYMENT_QUEUE, exchange=settings.EVENT_EXCHANGE, routing_key=settings.RK_BALANCE_HOLD_FAILED)
+    ch.queue_bind(queue=settings.PAYMENT_PAYMENT_QUEUE, exchange=settings.EVENT_EXCHANGE, routing_key=settings.RK_TUITION_LOCK_FAILED)
 
     subs = [
         Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_OTP_SUCCEED, on_otp_succeed),
@@ -217,5 +258,7 @@ def start_consumers() -> None:
         Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_TUITION_UNLOCKED, on_tuition_unlocked),
         Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_BALANCE_HELD, on_balance_held),
         Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_TUITION_LOCK, on_tuition_lock),
+        Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_BALANCE_HOLD_FAILED, on_balance_hold_failed),
+        Subscription(settings.PAYMENT_PAYMENT_QUEUE, settings.RK_TUITION_LOCK_FAILED, on_tuition_lock_failed),
     ]
     run(subs, join=False)
