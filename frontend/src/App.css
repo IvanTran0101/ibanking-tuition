@@ -1,9 +1,19 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+#root { max-width: 1280px; margin: 0 auto; padding: 2rem; }
+.container { display: flex; justify-content: center; }
+.center { text-align: center; padding: 3rem; }
+.form { width: 520px; text-align: left; }
+.form h2 { margin-top: 0; }
+.form h3 { color: #0b5ed7; margin-top: 1.25rem; }
+.form label { display: block; margin: 0.5rem 0; font-size: 0.95rem; }
+.form input { width: 100%; padding: 10px 12px; margin-top: 6px; box-sizing: border-box; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; }
+.form button { width: 100%; padding: 10px 12px; margin-top: 10px; cursor: pointer; }
+.form button.secondary { background: #0d6efd; color: white; width: auto; }
+.form button.danger { background: #dc3545; color: white; }
+.error { color: #dc3545; margin-bottom: 8px; }
+.info { color: #0d6efd; margin-bottom: 8px; }
+.checkbox { display: flex; align-items: center; gap: 8px; }
 
 .logo {
   height: 6em;
