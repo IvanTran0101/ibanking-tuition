@@ -19,8 +19,8 @@ from tuition_service.app.db import session_scope
 
 
 STUDENTS = [
-    {"full_name": "John Smith"},
-    {"full_name": "William Clinton"},
+    {"full_name": "John Smith", "student_id": "523K0017"},
+    {"full_name": "William Clinton", "student_id": "523K0018"},
 ]
 
 TERMS = list(range(1, 9))  # 8 terms: 1..8
@@ -29,9 +29,10 @@ AMOUNT_VND = 1_000_000
 
 def seed() -> None:
     with session_scope() as db:
-        # Insert students
+        # Insert students (derive UUID from provided student_id so it's stable)
         for s in STUDENTS:
-            sid = str(uuid.uuid4())
+            code = s["student_id"]
+            sid = str(uuid.uuid5(uuid.NAMESPACE_DNS, code))
             db.execute(
                 text(
                     """
@@ -68,5 +69,7 @@ def seed() -> None:
 
 if __name__ == "__main__":
     seed()
+    # Print mapping code -> uuid for convenience when calling APIs
+    for s in STUDENTS:
+        print(f"student_id {s['student_id']} -> uuid {uuid.uuid5(uuid.NAMESPACE_DNS, s['student_id'])}")
     print("Tuition seed completed.")
-

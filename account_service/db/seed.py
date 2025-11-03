@@ -44,7 +44,7 @@ def seed() -> None:
                 text(
                     """
                     INSERT INTO accounts (user_id, username, password_hash, full_name, phone_number, email, balance)
-                    VALUES (:user_id::uuid, :username, :password_hash, :full_name, :phone_number, :email, :balance)
+                    VALUES (:user_id, :username, :password_hash, :full_name, :phone_number, :email, :balance)
                     ON CONFLICT (username) DO NOTHING
                     """
                 ),
@@ -63,4 +63,3 @@ def seed() -> None:
 if __name__ == "__main__":
     seed()
     print("Account seed completed.")
-

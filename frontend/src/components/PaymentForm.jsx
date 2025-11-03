@@ -81,6 +81,16 @@ export default function PaymentForm({ onLoggedOut }) {
     return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [me]);
 
+  // Debounce: after 5 seconds since last input, trigger lookup
+  useEffect(() => {
+    if (lookupTimer.current) clearTimeout(lookupTimer.current);
+    if (!studentId) return;
+    lookupTimer.current = setTimeout(() => handleLookup(), 5000);
+    return () => {
+      if (lookupTimer.current) clearTimeout(lookupTimer.current);
+    };
+  }, [studentId]);
+
   return (
     <form className="card form" onSubmit={handleGetOtp}>
       <h2 className="title">Tuition Payment</h2>
@@ -112,13 +122,8 @@ export default function PaymentForm({ onLoggedOut }) {
           <input
             className="input"
             value={studentId}
-            onInput={(e) => {
-              const v = e.target.value;
-              setStudentId(v);
-              if (lookupTimer.current) clearTimeout(lookupTimer.current);
-              lookupTimer.current = setTimeout(() => handleLookup(), 5000);
-            }}
-            placeholder="e.g., 523K0001"
+            onChange={(e) => setStudentId(e.target.value)}
+            placeholder="Paste student UUID (from seed output)"
           />
         </div>
       </label>
