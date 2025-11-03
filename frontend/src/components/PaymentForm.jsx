@@ -3,6 +3,7 @@ import { getAccountMe } from "../api/account";
 import { getTuitionByStudentId } from "../api/tuition";
 import { initPayment } from "../api/payment";
 import { logout } from "../api/auth";
+import styles from "./PaymentForm.module.css";
 
 export default function PaymentForm({ onLoggedOut }) {
   const [me, setMe] = useState(null);
@@ -50,18 +51,18 @@ export default function PaymentForm({ onLoggedOut }) {
 
   async function handleGetOtp(e) {
     e.preventDefault();
-    if (!agree) {
-      setMsg("Please accept the terms.");
-      return;
-    }
-    if (!tuitionId || !tuitionAmount) {
-      setMsg("Please lookup tuition first.");
-      return;
-    }
+    if (!agree) return setMsg("Please accept the terms.");
+    if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
+
     setLoading(true);
     setMsg("");
+
     try {
-      const res = await initPayment({ tuition_id: tuitionId, amount: Number(tuitionAmount), term_no: termNo || undefined });
+      const res = await initPayment({
+        tuition_id: tuitionId,
+        amount: Number(tuitionAmount),
+        term_no: termNo || undefined
+      });
       setMsg(`OTP sent for payment ${res.payment_id}. Please check your email.`);
     } catch (e) {
       setMsg(e?.message || "Failed to start payment");
@@ -82,62 +83,75 @@ export default function PaymentForm({ onLoggedOut }) {
 
   return (
     <form className="card form" onSubmit={handleGetOtp}>
-      <h2>Tuition Payment</h2>
+      <h2 className="title">Tuition Payment</h2>
 
       {msg && <div className="info">{msg}</div>}
 
       <h3>1. Payer Information</h3>
-      <label>
+
+      <label className="label">
         Full Name
-        <input value={me?.full_name || ""} disabled />
+        <input className="input" value={me?.full_name || ""} disabled />
       </label>
-      <label>
+
+      <label className="label">
         Phone Number
-        <input value={me?.phone_number || ""} disabled />
+        <input className="input" value={me?.phone_number || ""} disabled />
       </label>
-      <label>
+
+      <label className="label">
         Email
-        <input value={me?.email || ""} disabled />
+        <input className="input" value={me?.email || ""} disabled />
       </label>
 
       <h3>2. Tuition Information</h3>
-      <label>
+
+      <label className="label">
         Student ID (MSSV)
         <div className="row">
           <input
+            className="input"
             value={studentId}
             onInput={(e) => {
               const v = e.target.value;
               setStudentId(v);
               if (lookupTimer.current) clearTimeout(lookupTimer.current);
-              // auto lookup after 5 seconds of inactivity
-              lookupTimer.current = setTimeout(() => {
-                handleLookup();
-              }, 5000);
+              lookupTimer.current = setTimeout(() => handleLookup(), 5000);
             }}
             placeholder="e.g., 523K0001"
           />
         </div>
       </label>
-      <label>
+
+      <label className="label">
         Student Name
-        <input value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+        <input className="input" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
       </label>
-      <label>
+
+      <label className="label">
         Tuition Amount (VND)
-        <input value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} />
+        <input className="input" value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} />
       </label>
 
       <h3>3. Payment Information</h3>
-      <div style={{ marginBottom: 8 }}>
-        <strong>Available Balance:</strong> <span style={{ color: "green" }}>{balanceFmt} VND</span>
+
+      <div>
+        <strong>Available Balance:</strong>{" "}
+        <span style={{ color: "green" }}>{balanceFmt} VND</span>
       </div>
+
       <label className="checkbox">
-        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> I agree to the terms and conditions.
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        I agree to the terms and conditions.
       </label>
 
-      <button type="submit" disabled={loading}>{loading ? "Processing..." : "Get OTP"}</button>
-      <button type="button" onClick={handleLogout} className="danger" disabled={loading}>Logout</button>
+      <button className="button" type="submit" disabled={loading}>
+        {loading ? "Processing..." : "Get OTP"}
+      </button>
+
+      <button type="button" onClick={handleLogout} className="button danger" disabled={loading}>
+        Logout
+      </button>
     </form>
   );
 }
