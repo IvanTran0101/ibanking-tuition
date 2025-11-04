@@ -29,10 +29,9 @@ AMOUNT_VND = 1_000_000
 
 def seed() -> None:
     with session_scope() as db:
-        # Insert students (derive UUID from provided student_id so it's stable)
+        # Insert students using provided student_id (text id)
         for s in STUDENTS:
-            code = s["student_id"]
-            sid = str(uuid.uuid5(uuid.NAMESPACE_DNS, code))
+            sid = s["student_id"]
             db.execute(
                 text(
                     """
@@ -69,7 +68,6 @@ def seed() -> None:
 
 if __name__ == "__main__":
     seed()
-    # Print mapping code -> uuid for convenience when calling APIs
     for s in STUDENTS:
-        print(f"student_id {s['student_id']} -> uuid {uuid.uuid5(uuid.NAMESPACE_DNS, s['student_id'])}")
+        print(f"seeded student_id (code): {s['student_id']}")
     print("Tuition seed completed.")

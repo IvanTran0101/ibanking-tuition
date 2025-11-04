@@ -5,14 +5,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- students: master data of student identities
 CREATE TABLE IF NOT EXISTS students (
-    student_id uuid PRIMARY KEY,
+    student_id text  PRIMARY KEY,
     full_name  text NOT NULL
 );
 
 -- tuitions: per-student tuition per term
 CREATE TABLE IF NOT EXISTS tuitions (
     tuition_id uuid        PRIMARY KEY,
-    student_id uuid        NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    student_id text         NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
     term_no    smallint    NOT NULL,
     amount_due numeric     NOT NULL,
     status     text        NOT NULL DEFAULT 'UNLOCKED', -- UNLOCKED | LOCKED
