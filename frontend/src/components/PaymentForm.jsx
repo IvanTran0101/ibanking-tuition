@@ -137,7 +137,7 @@ export default function PaymentForm({ onLoggedOut }) {
         <input className={styles.input} value={me?.email || ""} disabled />
       </label>
 
-      <h3>3. Tuition Information</h3>
+      <h3>2. Tuition Information</h3>
 
       <label className={styles.label}>
         Student ID (MSSV)
