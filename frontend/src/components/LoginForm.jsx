@@ -16,7 +16,8 @@ export default function LoginForm({ onLoggedIn }) {
       await login({ username, password });
       onLoggedIn?.();
     } catch (err) {
-      setError(err?.message || "Login failed");
+      setError(//err?.message || 
+        "Login failed");
     } finally {
       setLoading(false);
     }
