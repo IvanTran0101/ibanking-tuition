@@ -6,6 +6,7 @@ import pika
 RABBIT_URL = os.getenv("RABBIT_URL", "amqp://guest:guest@localhost:5672/%2f")
 EXCHANGE = os.getenv("EVENT_EXCHANGE", "ibanking.events")       # topic exchange
 DLX      = os.getenv("EVENT_DLX", "ibanking.dlx")               # dead-letter exchange
+HEARTBEAT = int(os.getenv("RABBIT_HEARTBEAT", "0"))             # 0 disables heartbeats
 
 # Singleton connection/channel cho cả process
 class _Rmq:
@@ -14,7 +15,7 @@ class _Rmq:
     @classmethod
     def _connect(cls) -> pika.BlockingConnection:
         params = pika.URLParameters(RABBIT_URL)
-        params.heartbeat = 30
+        params.heartbeat = HEARTBEAT
         params.blocked_connection_timeout = 60
         return pika.BlockingConnection(params)
 
