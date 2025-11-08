@@ -118,7 +118,18 @@ export default function PaymentForm({ onLoggedOut }) {
     <form className={styles.card} onSubmit={handleGetOtp}>
       <h2 className={styles.title}>Tuition Payment</h2>
 
-      {msg && <div className={styles.info}>{msg}</div>}
+      {msg && (
+        <div
+          className={styles.info}
+          style={
+            msg.startsWith("OTP verified!")
+              ? { color: "#0f5132" }
+              : undefined
+          }
+        >
+          {msg}
+        </div>
+      )}
 
       <h3>1. Payer Information</h3>
 
