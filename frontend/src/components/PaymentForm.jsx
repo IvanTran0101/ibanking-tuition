@@ -4,6 +4,9 @@ import { getTuitionByStudentId } from "../api/tuition";
 import { initPayment } from "../api/payment";
 import { logout } from "../api/auth";
 import styles from "./PaymentForm.module.css";
+import OTPForm from "./OTPForm";
+
+const OTP_TTL_MS = Number((import.meta && import.meta.env && import.meta.env.VITE_OTP_TTL_SEC) ?? 300) * 1000;
 
 export default function PaymentForm({ onLoggedOut }) {
   const [me, setMe] = useState(null);
@@ -16,6 +19,7 @@ export default function PaymentForm({ onLoggedOut }) {
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  const [otpContext, setOtpContext] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -55,6 +59,7 @@ export default function PaymentForm({ onLoggedOut }) {
     if (!agree) return setMsg("Please accept the terms.");
     if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
 
+    setOtpContext(null);
     setLoading(true);
     setMsg("");
 
@@ -64,7 +69,9 @@ export default function PaymentForm({ onLoggedOut }) {
         amount: Number(tuitionAmount),
         term_no: termNo || undefined
       });
-      setMsg(`OTP sent for payment ${res.payment_id}. Please check your email.`);
+      const expiresAt = Date.now() + OTP_TTL_MS;
+      setOtpContext({ paymentId: res.payment_id, expiresAt });
+      setMsg(`OTP sent for payment ${res.payment_id}. Enter it below within ${Math.floor(OTP_TTL_MS / 60000)} minutes.`);
     } catch (e) {
       setMsg(e?.message || "Failed to start payment");
     } finally {
@@ -73,8 +80,19 @@ export default function PaymentForm({ onLoggedOut }) {
   }
 
   function handleLogout() {
+    setOtpContext(null);
     logout();
     onLoggedOut?.();
+  }
+
+  function handleOtpVerified(pid) {
+    setOtpContext(null);
+    setMsg(`OTP verified for payment ${pid}. Payment authorization is in progress.`);
+  }
+
+  function handleOtpExpired(pid) {
+    setOtpContext(null);
+    setMsg(`OTP for payment ${pid} has expired. Request a new OTP to continue.`);
   }
 
   const balanceFmt = useMemo(() => {
@@ -160,6 +178,16 @@ export default function PaymentForm({ onLoggedOut }) {
           Logout
         </button>
       </div>
+
+      {otpContext && (
+        <OTPForm
+          key={otpContext.paymentId}
+          paymentId={otpContext.paymentId}
+          expiresAt={otpContext.expiresAt}
+          onVerified={handleOtpVerified}
+          onExpired={handleOtpExpired}
+        />
+      )}
     </form>
   );
 }
