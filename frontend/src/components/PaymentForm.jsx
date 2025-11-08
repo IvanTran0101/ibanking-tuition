@@ -91,12 +91,12 @@ export default function PaymentForm({ onLoggedOut }) {
 
   function handleOtpVerified(pid) {
     setOtpContext(null);
-    setMsg(`OTP verified for payment ${pid}. Payment authorization is in progress.`);
+    setMsg(`OTP verified!. Payment authorization is in progress. Please reload the page`);
   }
 
   function handleOtpExpired(pid) {
     setOtpContext(null);
-    setMsg(`OTP for payment ${pid} has expired. Request a new OTP to continue.`);
+    setMsg(`OTP has expired. Request a new OTP to continue.`);
   }
 
   const balanceFmt = useMemo(() => {
