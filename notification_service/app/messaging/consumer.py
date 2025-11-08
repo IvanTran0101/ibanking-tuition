@@ -6,8 +6,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any
 
+import os
 from libs.rmq import bus as rmq_bus
 from notification_service.app.settings import settings
+from libs.http.client import HttpClient
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +48,25 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
     if not user_id or not payment_id:
         return
     
-    # Use email provided directly in the event payload
     email_in_payload = payload.get("email")
     user_email = email_in_payload if isinstance(email_in_payload, str) and "@" in email_in_payload else None
+
+    if not user_email:
+        try:
+            base_url = os.getenv("ACCOUNT_SERVICE_URL", "http://account_service:8080")
+            client = HttpClient(base_url=base_url)
+            corr_id = (headers or {}).get("correlation-id")
+            resp = client.get(
+                "/accounts/me",
+                headers={"X-User-Id": str(user_id)},
+                correlation_id=corr_id,
+            )
+            data = resp.json()
+            em = data.get("email") if isinstance(data, dict) else None
+            if isinstance(em, str) and "@" in em:
+                user_email = em
+        except Exception as e:
+            logger.warning(f"Email lookup failed for user {user_id}: {e}")
 
     if not user_email:
         return

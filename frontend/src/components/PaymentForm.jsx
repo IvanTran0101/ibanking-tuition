@@ -29,17 +29,18 @@ export default function PaymentForm({ onLoggedOut }) {
   }, []);
 
   async function handleLookup() {
-    if (!studentId) return;
+    const sid = (studentId || "").trim();
+    if (!sid) return;
     setLoading(true);
     setMsg("");
     try {
-      const resp = await getTuitionByStudentId(studentId);
+      const resp = await getTuitionByStudentId(sid);
       setTuitionId(resp.tuition_id);
-      setStudentName(resp.student_id || "");
+      setStudentName(resp.full_name || "");
       setTermNo(resp.term_no || "");
       setTuitionAmount(String(resp.amount_due ?? ""));
     } catch (e) {
-      setMsg("Tuition not found for student id");
+      setMsg(e?.message || "Tuition not found for student id");
       setTuitionId("");
       setStudentName("");
       setTermNo("");
@@ -123,7 +124,7 @@ export default function PaymentForm({ onLoggedOut }) {
             className={styles.input}
             value={studentId}
             onChange={(e) => setStudentId(e.target.value)}
-            placeholder="Enter Student ID"
+            placeholder="Enter student code (e.g., 523K0017)"
           />
         </div>
       </label>
