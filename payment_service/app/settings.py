@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = Field(default=10)
     DB_ECHO: bool = Field(default=False)
 
+    # Redis (payment intent cache)
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
+    REDIS_POOL_SIZE: int = Field(default=10)
+
     # RabbitMQ
     RABBIT_URL: str = Field(default="amqp://guest:guest@localhost:5672/%2f")
     EVENT_EXCHANGE: str = Field(default="ibanking.events")

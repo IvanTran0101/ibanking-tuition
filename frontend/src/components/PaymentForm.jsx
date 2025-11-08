@@ -1,21 +1,25 @@
-  import { useEffect, useMemo, useRef, useState } from "react";
-  import { getAccountMe } from "../api/account";
-  import { getTuitionByStudentId } from "../api/tuition";
-  import { initPayment } from "../api/payment";
-  import { logout } from "../api/auth";
-  import styles from "./PaymentForm.module.css";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getAccountMe } from "../api/account";
+import { getTuitionByStudentId } from "../api/tuition";
+import { initPayment } from "../api/payment";
+import { logout } from "../api/auth";
+import styles from "./PaymentForm.module.css";
+import OTPForm from "./OTPForm";
 
-  export default function PaymentForm({ onLoggedOut }) {
-    const [me, setMe] = useState(null);
-    const [studentId, setStudentId] = useState("");
-    const lookupTimer = useRef(null);
-    const [studentName, setStudentName] = useState("");
-    const [tuitionAmount, setTuitionAmount] = useState("");
-    const [tuitionId, setTuitionId] = useState("");
-    const [termNo, setTermNo] = useState("");
-    const [agree, setAgree] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState("");
+const OTP_TTL_MS = Number((import.meta && import.meta.env && import.meta.env.VITE_OTP_TTL_SEC) ?? 300) * 1000;
+
+export default function PaymentForm({ onLoggedOut }) {
+  const [me, setMe] = useState(null);
+  const [studentId, setStudentId] = useState("");
+  const lookupTimer = useRef(null);
+  const [studentName, setStudentName] = useState("");
+  const [tuitionAmount, setTuitionAmount] = useState("");
+  const [tuitionId, setTuitionId] = useState("");
+  const [termNo, setTermNo] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [otpContext, setOtpContext] = useState(null);
 
     useEffect(() => {
       (async () => {
@@ -55,32 +59,45 @@
       if (!agree) return setMsg("Please accept the terms.");
       if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
 
-      setLoading(true);
-      setMsg("");
+    setOtpContext(null);
+    setLoading(true);
+    setMsg("");
 
-      try {
-        const res = await initPayment({
-          tuition_id: tuitionId,
-          amount: Number(tuitionAmount),
-          term_no: termNo || undefined
-        });
-        setMsg(`OTP sent for payment ${res.payment_id}. Please check your email.`);
-      } catch (e) {
-        setMsg(e?.message || "Failed to start payment");
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const res = await initPayment({
+        tuition_id: tuitionId,
+        amount: Number(tuitionAmount),
+        term_no: termNo || undefined
+      });
+      const expiresAt = Date.now() + OTP_TTL_MS;
+      setOtpContext({ paymentId: res.payment_id, expiresAt });
+      setMsg(`OTP sent for payment ${res.payment_id}. Enter it below within ${Math.floor(OTP_TTL_MS / 60000)} minutes.`);
+    } catch (e) {
+      setMsg(e?.message || "Failed to start payment");
+    } finally {
+      setLoading(false);
     }
 
-    function handleLogout() {
-      logout();
-      onLoggedOut?.();
-    }
+  function handleLogout() {
+    setOtpContext(null);
+    logout();
+    onLoggedOut?.();
+  }
 
-    const balanceFmt = useMemo(() => {
-      const v = Number(me?.balance ?? 0);
-      return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }, [me]);
+  function handleOtpVerified(pid) {
+    setOtpContext(null);
+    setMsg(`OTP verified for payment ${pid}. Payment authorization is in progress.`);
+  }
+
+  function handleOtpExpired(pid) {
+    setOtpContext(null);
+    setMsg(`OTP for payment ${pid} has expired. Request a new OTP to continue.`);
+  }
+
+  const balanceFmt = useMemo(() => {
+    const v = Number(me?.balance ?? 0);
+    return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }, [me]);
 
     // Debounce: after 5 seconds since last input, trigger lookup
     useEffect(() => {
@@ -151,15 +168,37 @@
           I agree to the terms and conditions.
         </label>
 
-        <div className={styles.buttonGroup}>
-          <button className={styles.button} type="submit" disabled={loading}>
-            {loading ? "Processing..." : "Get OTP"}
-          </button>
+      <h3>3. Payment Information</h3>
 
-          <button type="button" onClick={handleLogout} className={`${styles.button} ${styles.danger}`} disabled={loading}>
-            Logout
-          </button>
-        </div>
-      </form>
-    );
-  }
+      <div className={styles.balance}>
+        <strong>Available Balance:</strong>{" "}
+        <span>{balanceFmt} VND</span>
+      </div>
+
+      <label className={styles.checkbox}>
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        I agree to the terms and conditions.
+      </label>
+
+       <div className={styles.buttonGroup}>
+        <button className={styles.button} type="submit" disabled={loading}>
+          {loading ? "Processing..." : "Get OTP"}
+        </button>
+
+        <button type="button" onClick={handleLogout} className={`${styles.button} ${styles.danger}`} disabled={loading}>
+          Logout
+        </button>
+      </div>
+
+      {otpContext && (
+        <OTPForm
+          key={otpContext.paymentId}
+          paymentId={otpContext.paymentId}
+          expiresAt={otpContext.expiresAt}
+          onVerified={handleOtpVerified}
+          onExpired={handleOtpExpired}
+        />
+      )}
+    </form>
+  );
+}}
