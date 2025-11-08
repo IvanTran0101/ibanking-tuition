@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def _send_email(to: str, subject: str, body: str) -> None:
     """Send HTML email via SMTP"""
     if settings.DRY_RUN:
-        logger.info(f"[DRY RUN] Email to {to}: {subject}")
+        logger.info("[DRY RUN] email to=%s subject=%s", to, subject)
         return
     
     try:
@@ -33,23 +33,37 @@ def _send_email(to: str, subject: str, body: str) -> None:
                 server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             server.sendmail(settings.EMAIL_FROM, to, msg.as_string())
         
-        logger.info(f"Email sent to {to}")
+        logger.info("Email sent to %s subject=%s", to, subject)
     except Exception as e:
         logger.error(f"Failed to send email: {e}")
         raise
 
 
-def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
+def _on_message(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
     """Handle notification events"""
     event_type = (headers or {}).get("event-type", "")
     user_id = payload.get("user_id")
     payment_id = payload.get("payment_id")
     
     if not user_id or not payment_id:
+        logger.warning(
+            "notification_service missing user_id/payment_id event_type=%s message_id=%s payload=%s",
+            event_type,
+            message_id,
+            payload,
+        )
         return
     
     email_in_payload = payload.get("email")
     user_email = email_in_payload if isinstance(email_in_payload, str) and "@" in email_in_payload else None
+
+    logger.info(
+        "notification_service received event_type=%s payment_id=%s user_id=%s email_in_payload=%s",
+        event_type,
+        payment_id,
+        user_id,
+        email_in_payload,
+    )
 
     if not user_email:
         try:
@@ -66,14 +80,16 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
             if isinstance(em, str) and "@" in em:
                 user_email = em
         except Exception as e:
-            logger.warning(f"Email lookup failed for user {user_id}: {e}")
+            logger.warning("Email lookup failed for user %s: %s", user_id, e)
 
     if not user_email:
+        logger.warning("notification_service no email available for user_id=%s payment_id=%s", user_id, payment_id)
         return
     
     if event_type == "otp_generated":
         otp = payload.get("otp")
         if not otp:
+            logger.warning("notification_service otp_generated missing otp payment_id=%s", payment_id)
             return
         _send_email(
             to=user_email,
@@ -85,6 +101,7 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
             <p>This code expires in 5 minutes.</p>
             """
         )
+        logger.info("notification_service delivered otp email payment_id=%s to=%s", payment_id, user_email)
     
     elif event_type == "payment_completed":
         amount = payload.get("amount")
@@ -100,6 +117,9 @@ def _on_message(payload: Dict[str, Any], headers: Dict[str, Any]) -> None:
             <p>Thank you for your payment!</p>
             """
         )
+        logger.info("notification_service delivered receipt email payment_id=%s to=%s", payment_id, user_email)
+    else:
+        logger.debug("notification_service ignoring event_type=%s", event_type)
 
 
 def start_consumers() -> None:
@@ -118,5 +138,5 @@ def start_consumers() -> None:
         routing_key=settings.RK_PAYMENT_COMPLETED
     )
     
-    logger.info(f"Starting notification consumer on {settings.NOTIFICATION_QUEUE}")
+    logger.info("Starting notification consumer on %s", settings.NOTIFICATION_QUEUE)
     rmq_bus.start_consume(settings.NOTIFICATION_QUEUE, _on_message)

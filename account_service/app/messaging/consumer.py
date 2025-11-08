@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import uuid
+import logging
 from typing import Dict, Any
 
 from sqlalchemy import text
@@ -18,14 +19,19 @@ from account_service.app.messaging.publisher import (
 from account_service.app.db import session_scope
 from account_service.app.settings import settings
 
+logger = logging.getLogger(__name__)
+
 
 def _on_message(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
     event_type = (headers or {}).get("event-type") or ""
     if event_type == "payment_initiated":
+        logger.info("account_service received payment_initiated payment_id=%s user_id=%s", payload.get("payment_id"), payload.get("user_id"))
         _handle_payment_initiated(payload, headers, message_id)
     elif event_type == "payment_authorized":
+        logger.info("account_service received payment_authorized payment_id=%s user_id=%s", payload.get("payment_id"), payload.get("user_id"))
         _handle_payment_authorized(payload, headers, message_id)
     elif event_type == "payment_unauthorized":
+        logger.info("account_service received payment_unauthorized payment_id=%s", payload.get("payment_id"))
         _handle_payment_unauthorized(payload, headers, message_id)
     else:
         # Unknown event: ignore idempotently
@@ -46,6 +52,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
             {"uid": user_id},
         ).first()
         if not acc:
+            logger.warning("account_service user not found user_id=%s payment_id=%s", user_id, payment_id)
             publish_balance_hold_failed(
                 user_id=user_id,
                 amount=amount,
@@ -73,6 +80,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
         ).scalar_one()
         available = float(acc.balance) - float(amount) - float(sum_held)
         if available < 0:
+            logger.warning("account_service insufficient funds user_id=%s payment_id=%s available=%s required=%s", user_id, payment_id, acc.balance, amount)
             publish_balance_hold_failed(
                 user_id=user_id,
                 amount=amount,
@@ -109,6 +117,7 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
         email=str(getattr(acc, "email", "")),
         correlation_id=(headers or {}).get("correlation-id"),
     )
+    logger.info("account_service placed hold user_id=%s payment_id=%s amount=%s", user_id, payment_id, amount)
 
 
 def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
@@ -153,6 +162,7 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
             email=email,
             correlation_id=(headers or {}).get("correlation-id"),
         )
+        logger.info("account_service captured hold user_id=%s payment_id=%s", user_id, payment_id)
 
 
 def _handle_payment_unauthorized(payload: Dict[str, Any], headers: Dict[str, Any], message_id: str) -> None:
@@ -203,6 +213,7 @@ def _handle_payment_unauthorized(payload: Dict[str, Any], headers: Dict[str, Any
             email=email,
             correlation_id=(headers or {}).get("correlation-id"),
         )
+        logger.info("account_service released hold user_id=%s payment_id=%s reason=%s", to_publish["user_id"], payment_id, reason_code)
 
 
 

@@ -16,12 +16,11 @@ CREATE TABLE IF NOT EXISTS tuitions (
     term_no    smallint    NOT NULL,
     amount_due numeric     NOT NULL,
     status     text        NOT NULL DEFAULT 'UNLOCKED', -- UNLOCKED | LOCKED
-    expires_at timestamptz NOT NULL,
-    payment_id text        NOT NULL UNIQUE
+    expires_at timestamptz,
+    payment_id text        UNIQUE
 );
 
 -- A student can have at most one tuition per term
 CREATE UNIQUE INDEX IF NOT EXISTS uq_tuitions_student_term ON tuitions(student_id, term_no);
 
 CREATE INDEX IF NOT EXISTS idx_tuitions_status ON tuitions(status);
-

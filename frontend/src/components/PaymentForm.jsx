@@ -52,12 +52,47 @@ export default function PaymentForm({ onLoggedOut }) {
       } finally {
         setLoading(false);
       }
+<<<<<<< HEAD
+=======
+    })();
+  }, []);
+
+  async function handleLookup() {
+    const sid = (studentId || "").trim();
+    if (!sid) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      const resp = await getTuitionByStudentId(sid);
+      setStudentId(resp.student_id || sid);
+      setTuitionId(resp.tuition_id);
+      setStudentName(resp.full_name || "");
+      setTermNo(resp.term_no || "");
+      setTuitionAmount(String(resp.amount_due ?? ""));
+    } catch (e) {
+      setMsg(e?.message || "Tuition not found for student id");
+      setTuitionId("");
+      setStudentName("");
+      setTermNo("");
+      setTuitionAmount("");
+    } finally {
+      setLoading(false);
+>>>>>>> main
     }
 
+<<<<<<< HEAD
     async function handleGetOtp(e) {
       e.preventDefault();
       if (!agree) return setMsg("Please accept the terms.");
       if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
+=======
+  async function handleGetOtp(e) {
+    e.preventDefault();
+    if (!agree) return setMsg("Please accept the terms.");
+    const trimmedStudentId = studentId.trim();
+    if (!trimmedStudentId) return setMsg("Please enter a valid student ID and lookup tuition.");
+    if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
+>>>>>>> main
 
     setOtpContext(null);
     setLoading(true);
@@ -67,7 +102,8 @@ export default function PaymentForm({ onLoggedOut }) {
       const res = await initPayment({
         tuition_id: tuitionId,
         amount: Number(tuitionAmount),
-        term_no: termNo || undefined
+        term_no: termNo || undefined,
+        student_id: trimmedStudentId,
       });
       const expiresAt = Date.now() + OTP_TTL_MS;
       setOtpContext({ paymentId: res.payment_id, expiresAt });
@@ -86,12 +122,12 @@ export default function PaymentForm({ onLoggedOut }) {
 
   function handleOtpVerified(pid) {
     setOtpContext(null);
-    setMsg(`OTP verified for payment ${pid}. Payment authorization is in progress.`);
+    setMsg(`OTP verified!. Payment authorization is in progress. Please reload the page`);
   }
 
   function handleOtpExpired(pid) {
     setOtpContext(null);
-    setMsg(`OTP for payment ${pid} has expired. Request a new OTP to continue.`);
+    setMsg(`OTP has expired. Request a new OTP to continue.`);
   }
 
   const balanceFmt = useMemo(() => {
@@ -113,7 +149,22 @@ export default function PaymentForm({ onLoggedOut }) {
       <form className={styles.card} onSubmit={handleGetOtp}>
         <h2 className={styles.title}>Tuition Payment</h2>
 
+<<<<<<< HEAD
         {msg && <div className={styles.info}>{msg}</div>}
+=======
+      {msg && (
+        <div
+          className={styles.info}
+          style={
+            msg.startsWith("OTP verified!")
+              ? { color: "#0f5132" }
+              : undefined
+          }
+        >
+          {msg}
+        </div>
+      )}
+>>>>>>> main
 
         <h3>1. Payer Information</h3>
 
@@ -132,7 +183,11 @@ export default function PaymentForm({ onLoggedOut }) {
           <input className={styles.input} value={me?.email || ""} disabled />
         </label>
 
+<<<<<<< HEAD
         <h3>2. Tuition Information</h3>
+=======
+      <h3>2. Tuition Information</h3>
+>>>>>>> main
 
         <label className={styles.label}>
           Student ID (MSSV)
