@@ -132,7 +132,7 @@ export default function PaymentForm({ onLoggedOut }) {
           <input className={styles.input} value={me?.email || ""} disabled />
         </label>
 
-        <h3>3. Tuition Information</h3>
+        <h3>2. Tuition Information</h3>
 
         <label className={styles.label}>
           Student ID (MSSV)
@@ -154,18 +154,6 @@ export default function PaymentForm({ onLoggedOut }) {
         <label className={styles.label}>
           Tuition Amount (VND)
           <input className={styles.input} value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} disabled/>
-        </label>
-
-        <h3>3. Payment Information</h3>
-
-        <div className={styles.balance}>
-          <strong>Available Balance:</strong>{" "}
-          <span>{balanceFmt} VND</span>
-        </div>
-
-        <label className={styles.checkbox}>
-          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          I agree to the terms and conditions.
         </label>
 
       <h3>3. Payment Information</h3>
