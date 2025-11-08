@@ -1,0 +1,44 @@
+.card {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  background: #fff;
+}
+
+.title {
+  text-align: center;
+  color: #2d6a4f;
+}
+
+.info {
+  margin-bottom: 1.2rem;
+  color: #333;
+  text-align: center;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.4rem 0;
+}
+
+.footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.button {
+  background-color: #007bff;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
