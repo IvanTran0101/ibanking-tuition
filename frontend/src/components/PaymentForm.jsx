@@ -92,71 +92,73 @@ export default function PaymentForm({ onLoggedOut }) {
   }, [studentId]);
 
   return (
-    <form className="card form" onSubmit={handleGetOtp}>
-      <h2 className="title">Tuition Payment</h2>
+    <form className={styles.card} onSubmit={handleGetOtp}>
+      <h2 className={styles.title}>Tuition Payment</h2>
 
-      {msg && <div className="info">{msg}</div>}
+      {msg && <div className={styles.info}>{msg}</div>}
 
       <h3>1. Payer Information</h3>
 
-      <label className="label">
+      <label className={styles.label}>
         Full Name
-        <input className="input" value={me?.full_name || ""} disabled />
+        <input className={styles.input} value={me?.full_name || ""} disabled />
       </label>
 
-      <label className="label">
+      <label className={styles.label}>
         Phone Number
-        <input className="input" value={me?.phone_number || ""} disabled />
+        <input className={styles.input} value={me?.phone_number || ""} disabled />
       </label>
 
-      <label className="label">
+      <label className={styles.label}>
         Email
-        <input className="input" value={me?.email || ""} disabled />
+        <input className={styles.input} value={me?.email || ""} disabled />
       </label>
 
-      <h3>2. Tuition Information</h3>
+      <h3>3. Tuition Information</h3>
 
-      <label className="label">
+      <label className={styles.label}>
         Student ID (MSSV)
-        <div className="row">
+        <div className={styles.row}>
           <input
-            className="input"
+            className={styles.input}
             value={studentId}
             onChange={(e) => setStudentId(e.target.value)}
-            placeholder="Paste student UUID (from seed output)"
+            placeholder="Enter Student ID"
           />
         </div>
       </label>
 
-      <label className="label">
+      <label className={styles.label}>
         Student Name
-        <input className="input" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+        <input className={styles.input} value={studentName} onChange={(e) => setStudentName(e.target.value)} disabled/>
       </label>
 
-      <label className="label">
+      <label className={styles.label}>
         Tuition Amount (VND)
-        <input className="input" value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} />
+        <input className={styles.input} value={tuitionAmount} onChange={(e) => setTuitionAmount(e.target.value)} disabled/>
       </label>
 
       <h3>3. Payment Information</h3>
 
-      <div>
+      <div className={styles.balance}>
         <strong>Available Balance:</strong>{" "}
-        <span style={{ color: "green" }}>{balanceFmt} VND</span>
+        <span>{balanceFmt} VND</span>
       </div>
 
-      <label className="checkbox">
+      <label className={styles.checkbox}>
         <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
         I agree to the terms and conditions.
       </label>
 
-      <button className="button" type="submit" disabled={loading}>
-        {loading ? "Processing..." : "Get OTP"}
-      </button>
+       <div className={styles.buttonGroup}>
+        <button className={styles.button} type="submit" disabled={loading}>
+          {loading ? "Processing..." : "Get OTP"}
+        </button>
 
-      <button type="button" onClick={handleLogout} className="button danger" disabled={loading}>
-        Logout
-      </button>
+        <button type="button" onClick={handleLogout} className={`${styles.button} ${styles.danger}`} disabled={loading}>
+          Logout
+        </button>
+      </div>
     </form>
   );
 }
