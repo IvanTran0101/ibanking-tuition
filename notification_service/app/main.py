@@ -1,5 +1,6 @@
 import logging
 import sys
+import threading
 from fastapi import FastAPI
 
 from notification_service.app.messaging.consumer import start_consumers
@@ -23,10 +24,10 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def _startup() -> None:
-        # Start RMQ consumers in background threads. If this fails we want to know,
-        # otherwise emails will silently stop flowing.
+        # Start RMQ consumers in a daemon thread. If this fails we still want the
+        # exception to bubble so deployment can fail fast.
         try:
-            start_consumers()
+            threading.Thread(target=start_consumers, name="notification-consumer", daemon=True).start()
             logger.info("Notification consumers started.")
         except Exception as exc:
             logger.exception("Failed to start notification consumers", exc_info=exc)

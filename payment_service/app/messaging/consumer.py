@@ -5,6 +5,7 @@ import logging
 from typing import Any, Dict
 
 from libs.rmq import bus as rmq_bus
+from sqlalchemy import text
 
 from payment_service.app.cache import get_intent, update_intent, del_intent
 from payment_service.app.db import session_scope
@@ -31,11 +32,13 @@ def _try_finalize(payment_id: str, correlation_id: str | None = None) -> None:
     # Insert completed payment into DB and clear intent
     with session_scope() as db:
         db.execute(
-            """
-            INSERT INTO payments (payment_id, tuition_id, user_id, amount, expires_at, complete_at, status)
-            VALUES (:pid, :tid, :uid, :amt, to_timestamp(:exp), :comp, :st)
-            ON CONFLICT (payment_id) DO NOTHING
-            """,
+            text(
+                """
+                INSERT INTO payments (payment_id, tuition_id, user_id, amount, expires_at, complete_at, status)
+                VALUES (:pid, :tid, :uid, :amt, to_timestamp(:exp), :comp, :st)
+                ON CONFLICT (payment_id) DO NOTHING
+                """
+            ),
             {
                 "pid": payment_id,
                 "tid": intent.get("tuition_id"),
