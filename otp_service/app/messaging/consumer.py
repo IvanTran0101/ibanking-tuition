@@ -1,5 +1,5 @@
 ﻿from __future__ import annotations
-
+import logging
 import random
 from typing import Dict, Any
 
@@ -9,6 +9,7 @@ from libs.rmq import bus as rmq_bus
 from otp_service.app.cache import set_otp
 from otp_service.app.settings import settings
 
+logger = logging.getLogger(__name__)
 
 def _gen_otp(length: int) -> str:
     return "".join(str(random.randint(0, 9)) for _ in range(max(4, length)))
@@ -38,6 +39,7 @@ def on_payment_processing(payload: Dict[str, Any], headers: Dict[str, Any], mess
         email=email,
         correlation_id=(headers or {}).get("correlation-id"),
     )
+    logger.info("OTP generated for payment %s", payment_id)
 
 
 def start_consumers() -> None:
@@ -45,4 +47,3 @@ def start_consumers() -> None:
     rmq_bus.declare_queue(settings.OTP_QUEUE, settings.RK_PAYMENT_PROCESSING, dead_letter=True, prefetch=settings.CONSUMER_PREFETCH)
     subs: list[Subscription] = [Subscription(settings.OTP_QUEUE, settings.RK_PAYMENT_PROCESSING, on_payment_processing)]
     run(subs, join=False)
-

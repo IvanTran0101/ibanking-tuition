@@ -22,6 +22,7 @@ def init_payment(body: PaymentInitRequest, x_user_id: str | None = Header(None, 
         "tuition_id": body.tuition_id,
         "amount": body.amount,
         "term": body.term_no,
+        "student_id": body.student_id,
         "status": "PROCESSING",
     }, ttl_sec=15*60)
 
@@ -32,6 +33,7 @@ def init_payment(body: PaymentInitRequest, x_user_id: str | None = Header(None, 
         tuition_id=body.tuition_id,
         amount=body.amount,
         term=body.term_no,
+        student_id=body.student_id,
     )
 
     return PaymentInitResponse(payment_id=payment_id, status="PROCESSING")

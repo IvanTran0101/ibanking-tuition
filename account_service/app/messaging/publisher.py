@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from libs.rmq.publisher import publish_event
 from account_service.app.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def publish_balance_held(*, user_id: str, amount: float, payment_id: str, email: str, correlation_id: Optional[str] = None) -> None:
@@ -13,6 +16,7 @@ def publish_balance_held(*, user_id: str, amount: float, payment_id: str, email:
         event_type="balance_held",
         correlation_id=correlation_id,
     )
+    logger.info("event balance_held published payment_id=%s user_id=%s amount=%s", payment_id, user_id, amount)
 
 
 def publish_balance_hold_failed(
@@ -38,6 +42,7 @@ def publish_balance_hold_failed(
         event_type="balance_hold_failed",
         correlation_id=correlation_id,
     )
+    logger.warning("event balance_hold_failed payment_id=%s user_id=%s reason=%s", payment_id, user_id, reason_code)
 
 
 def publish_balance_updated(*, user_id: str, amount: float, payment_id: str, email: str, correlation_id: Optional[str] = None) -> None:
@@ -47,6 +52,7 @@ def publish_balance_updated(*, user_id: str, amount: float, payment_id: str, ema
         event_type="balance_updated",
         correlation_id=correlation_id,
     )
+    logger.info("event balance_updated payment_id=%s user_id=%s", payment_id, user_id)
 
 
 def publish_balance_released(
@@ -65,6 +71,7 @@ def publish_balance_released(
         event_type="balance_released",
         correlation_id=correlation_id,
     )
+    logger.info("event balance_released payment_id=%s user_id=%s reason=%s", payment_id, user_id, reason_code)
 
 
 __all__ = [
@@ -73,4 +80,3 @@ __all__ = [
     "publish_balance_updated",
     "publish_balance_released",
 ]
-

@@ -4,6 +4,7 @@ export interface InitPaymentRequest {
   tuition_id: string;
   amount: number;
   term_no?: string;
+  student_id: string;
 }
 
 export interface InitPaymentResponse {
@@ -18,4 +19,3 @@ export async function initPayment(body: InitPaymentRequest): Promise<InitPayment
     requireAuth: true,
   });
 }
-

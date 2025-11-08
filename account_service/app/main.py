@@ -1,8 +1,11 @@
+import logging
 from fastapi import FastAPI
 import threading
 
 from account_service.app.api import router as api_router
 from account_service.app.messaging.consumer import start_consumers
+
+logging.basicConfig(level=logging.INFO)
 
 
 def create_app() -> FastAPI:

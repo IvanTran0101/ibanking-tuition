@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Optional
 
 from libs.rmq.publisher import publish_event
 from tuition_service.app.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def publish_tuition_locked(
@@ -26,9 +29,10 @@ def publish_tuition_locked(
             "status": status,
             "payment_id": payment_id,
         },
-        event_type="tuition_lock",
+        event_type="tuition_locked",
         correlation_id=correlation_id,
     )
+    logger.info("event tuition_locked payment_id=%s tuition_id=%s status=%s", payment_id, tuition_id, status)
 
 
 def publish_tuition_lock_failed(
@@ -58,6 +62,7 @@ def publish_tuition_lock_failed(
         event_type="tuition_lock_failed",
         correlation_id=correlation_id,
     )
+    logger.warning("event tuition_lock_failed payment_id=%s tuition_id=%s reason=%s", payment_id, tuition_id, reason_code)
 
 
 def publish_tuition_updated(
@@ -83,6 +88,7 @@ def publish_tuition_updated(
         event_type="tuition_updated",
         correlation_id=correlation_id,
     )
+    logger.info("event tuition_updated payment_id=%s tuition_id=%s", payment_id, tuition_id)
 
 
 def publish_tuition_unlocked(
@@ -112,6 +118,7 @@ def publish_tuition_unlocked(
         event_type="tuition_unlocked",
         correlation_id=correlation_id,
     )
+    logger.info("event tuition_unlocked payment_id=%s tuition_id=%s reason=%s", payment_id, tuition_id, reason_code)
 
 
 __all__ = [

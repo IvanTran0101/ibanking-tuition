@@ -39,6 +39,7 @@ export default function PaymentForm({ onLoggedOut }) {
     setMsg("");
     try {
       const resp = await getTuitionByStudentId(sid);
+      setStudentId(resp.student_id || sid);
       setTuitionId(resp.tuition_id);
       setStudentName(resp.full_name || "");
       setTermNo(resp.term_no || "");
@@ -57,6 +58,8 @@ export default function PaymentForm({ onLoggedOut }) {
   async function handleGetOtp(e) {
     e.preventDefault();
     if (!agree) return setMsg("Please accept the terms.");
+    const trimmedStudentId = studentId.trim();
+    if (!trimmedStudentId) return setMsg("Please enter a valid student ID and lookup tuition.");
     if (!tuitionId || !tuitionAmount) return setMsg("Please lookup tuition first.");
 
     setOtpContext(null);
@@ -67,7 +70,8 @@ export default function PaymentForm({ onLoggedOut }) {
       const res = await initPayment({
         tuition_id: tuitionId,
         amount: Number(tuitionAmount),
-        term_no: termNo || undefined
+        term_no: termNo || undefined,
+        student_id: trimmedStudentId,
       });
       const expiresAt = Date.now() + OTP_TTL_MS;
       setOtpContext({ paymentId: res.payment_id, expiresAt });

@@ -45,7 +45,7 @@ def seed() -> None:
 
             # Insert 8 terms for each student
             for term_no in TERMS:
-                tid = str(uuid.uuid4())
+                tid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{sid}-{term_no}"))  # deterministic UUID per student/term
                 pid = str(uuid.uuid4())  # placeholder payment_id (will be overwritten on lock)
                 db.execute(
                     text(

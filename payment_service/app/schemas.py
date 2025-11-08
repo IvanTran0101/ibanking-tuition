@@ -13,6 +13,7 @@ class PaymentInitRequest(BaseModel):
     amount: int
     term_no: int | None = None
     user_id: str | None = None
+    student_id: str
 
 class PaymentInitResponse(BaseModel):
     payment_id: str
