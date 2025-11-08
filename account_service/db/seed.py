@@ -19,7 +19,7 @@ USERS = [
         # UUIDs with trailing ...0001 and ...0002 to conceptually match 1, 2
         "user_id": "00000000-0000-0000-0000-000000000001",
         "username": "anhminh",  # you can login with this username
-        "password_hash": "e9383d82054d9e1f5645945c4f452cff971c33ae4fbde9e472186c4416c1e690",
+        "password_hash": "d48cb882ca5db13885c5d8f644904ba552b2218d1f808632a7a218b3053ea087",
         "full_name": "Tran Anh Minh",
         "phone_number": "0776966302",
         "email": "anhminht68@gmail.com",
@@ -28,7 +28,7 @@ USERS = [
     {
         "user_id": "00000000-0000-0000-0000-000000000002",
         "username": "thanhvu",
-        "password_hash": "43707bc47a4cc725ecd77a0e566d586511a1e75cca70ee6e9ca3fc848925275d",
+        "password_hash": "d48cb882ca5db13885c5d8f644904ba552b2218d1f808632a7a218b3053ea087",
         "full_name": "Chau Thanh Vu",
         "phone_number": "0776966301",
         "email": "chauthanhvu24122007@gmail.com",
