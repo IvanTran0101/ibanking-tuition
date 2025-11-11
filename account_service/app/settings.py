@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     ACCOUNT_PAYMENT_QUEUE: str = Field(default="account.payment.q")
     CONSUMER_PREFETCH: int = Field(default=32)
 
+    # Redis (holds cache)
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
+    REDIS_POOL_SIZE: int = Field(default=10)
+
     # Routing keys (subscribe)
     RK_PAYMENT_INITIATED: str = Field(default="payment.v1.initiated")
     RK_PAYMENT_UNAUTHORIZED: str = Field(default="payment.v1.unauthorized")

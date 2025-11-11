@@ -231,10 +231,10 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
         ).mappings().first()
 
         if tuition_data and tuition_data["status"] == "LOCKED":
-            # Mark as unlocked (paid) and optionally set amount_due to 0
+            # Mark tuition as PAID; keep original amount_due for reporting
             db.execute(
                 text(
-                    "UPDATE tuitions SET status='UNLOCKED', amount_due = 0 WHERE tuition_id = :tid AND student_id = :sid"
+                    "UPDATE tuitions SET status='PAID', expires_at = NULL WHERE tuition_id = :tid AND student_id = :sid"
                 ),
                 {"tid": tuition_id, "sid": tuition_data["student_id"]},
             )
@@ -246,8 +246,8 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
             student_id=student_id,
             tuition_id=tuition_id,
             term_no=tuition_data["term_no"],
-            amount_due=0,
-            status="UNLOCKED",
+            amount_due=float(tuition_data["amount_due"]),
+            status="PAID",
             payment_id=payment_id,
             correlation_id=(headers or {}).get("correlation-id"),
         )

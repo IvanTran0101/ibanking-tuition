@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any
 
 from sqlalchemy import text
+from account_service.app.redis import holds as redis_holds
 
 from libs.rmq import consumer as rmq_consumer
 from libs.rmq import bus as rmq_bus
@@ -64,21 +65,13 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
             )
             return
 
-        # Idempotency: if hold already exists, no-op
-        existing = db.execute(
-            text("SELECT status FROM holds WHERE payment_id = :pid"), {"pid": payment_id}
-        ).first()
-        if existing:
+        # Idempotency: if hold already exists in redis, no-op
+        if redis_holds.get_hold(payment_id):
             return
 
-        # Available = balance - sum(holds HELD)
-        sum_held = db.execute(
-            text(
-                "SELECT COALESCE(SUM(amount),0) FROM holds WHERE user_id=:uid AND status='HELD'"
-            ),
-            {"uid": user_id},
-        ).scalar_one()
-        available = float(acc.balance) - float(amount) - float(sum_held)
+        # Available = balance - total held in redis
+        total_held = redis_holds.get_total_held(user_id)
+        available = float(acc.balance) - float(amount) - total_held
         if available < 0:
             logger.warning("account_service insufficient funds user_id=%s payment_id=%s available=%s required=%s", user_id, payment_id, acc.balance, amount)
             publish_balance_hold_failed(
@@ -92,22 +85,15 @@ def _handle_payment_initiated(payload: Dict[str, Any], headers: Dict[str, Any], 
             )
             return
 
-        # Create hold
+        # Create hold in Redis
         expires_at = dt.datetime.utcnow() + dt.timedelta(minutes=settings.HOLD_EXPIRES_MIN)
-        db.execute(
-            text(
-                """
-                INSERT INTO holds (hold_id, user_id, amount, expires_at, status, payment_id)
-                VALUES (:hid, :uid, :amt, :exp, 'HELD', :pid)
-                """
-            ),
-            {
-                "hid": str(uuid.uuid4()),
-                "uid": user_id,
-                "amt": amount,
-                "exp": expires_at,
-                "pid": payment_id,
-            },
+        redis_holds.create_hold(
+            payment_id=payment_id,
+            user_id=user_id,
+            amount=float(amount),
+            email=str(getattr(acc, "email", "")),
+            expires_at=expires_at,
+            ttl_seconds=settings.HOLD_EXPIRES_MIN * 60,
         )
 
     publish_balance_held(
@@ -127,25 +113,18 @@ def _handle_payment_authorized(payload: Dict[str, Any], headers: Dict[str, Any],
     if not (user_id and amount and payment_id):
         return
 
-    updated = False
-    with session_scope() as db:
-        hold = db.execute(
-            text("SELECT amount, status FROM holds WHERE payment_id=:pid AND user_id=:uid FOR UPDATE"),
-            {"pid": payment_id, "uid": user_id},
-        ).mappings().first()
-        if hold and hold["status"] == "HELD":
-            # Deduct balance and capture hold
-            db.execute(
-                text("UPDATE accounts SET balance = balance - :amt WHERE user_id = :uid"),
-                {"amt": amount, "uid": user_id},
-            )
-            db.execute(
-                text("UPDATE holds SET status='CAPTURED' WHERE payment_id=:pid"),
-                {"pid": payment_id},
-            )
-            updated = True
+    hold = redis_holds.remove_hold(payment_id)
+    if not hold:
+        return
 
-    if updated:
+    with session_scope() as db:
+        db.execute(
+            text("UPDATE accounts SET balance = balance - :amt WHERE user_id = :uid"),
+            {"amt": amount, "uid": user_id},
+        )
+    redis_holds.decrease_total(user_id, float(amount))
+
+    if True:
         # lookup email for user
         email: str = ""
         with session_scope() as db:
@@ -176,23 +155,14 @@ def _handle_payment_unauthorized(payload: Dict[str, Any], headers: Dict[str, Any
     if not payment_id:
         return
 
+    hold = redis_holds.remove_hold(payment_id)
     to_publish: Dict[str, Any] | None = None
-    with session_scope() as db:
-        hold = db.execute(
-            text(
-                "SELECT user_id, amount, status FROM holds WHERE payment_id=:pid FOR UPDATE"
-            ),
-            {"pid": payment_id},
-        ).mappings().first()
-        if hold and hold["status"] == "HELD":
-            db.execute(
-                text("UPDATE holds SET status='RELEASED' WHERE payment_id=:pid"),
-                {"pid": payment_id},
-            )
-            to_publish = {
-                "user_id": hold["user_id"],
-                "amount": float(hold["amount"]),
-            }
+    if hold and hold.get("status") == "HELD":
+        redis_holds.decrease_total(hold["user_id"], float(hold["amount"]))
+        to_publish = {
+            "user_id": hold["user_id"],
+            "amount": float(hold["amount"]),
+        }
 
     if to_publish:
         # lookup email for user

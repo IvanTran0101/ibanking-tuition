@@ -27,15 +27,13 @@ def get_tuition(
         """
         SELECT 
             t.tuition_id::text   AS tuition_id,
-            s.student_id::text   AS student_id,
-            s.full_name          AS full_name,
+            t.student_id::text   AS student_id,
+            t.student_full_name  AS full_name,
             t.term_no            AS term_no,
             t.amount_due::float8 AS amount_due,
             t.status::text       AS status
         FROM tuitions t
-        JOIN students s ON s.student_id = t.student_id
-        WHERE s.student_id = :sid
-          AND t.amount_due > 0
+        WHERE t.student_id = :sid
           AND t.status = 'UNLOCKED'
         ORDER BY t.term_no ASC
         LIMIT 1
@@ -49,14 +47,13 @@ def get_tuition(
             """
             SELECT 
                 t.tuition_id::text   AS tuition_id,
-                s.student_id::text   AS student_id,
-                s.full_name          AS full_name,
+                t.student_id::text   AS student_id,
+                t.student_full_name  AS full_name,
                 t.term_no            AS term_no,
                 t.amount_due::float8 AS amount_due,
                 t.status::text       AS status
             FROM tuitions t
-            JOIN students s ON s.student_id = t.student_id
-            WHERE s.student_id = :sid
+            WHERE t.student_id = :sid
             ORDER BY t.term_no DESC
             LIMIT 1
             """
