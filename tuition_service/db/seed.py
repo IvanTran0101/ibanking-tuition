@@ -29,20 +29,8 @@ AMOUNT_VND = 1_000_000
 
 def seed() -> None:
     with session_scope() as db:
-        # Insert students using provided student_id (text id)
         for s in STUDENTS:
             sid = s["student_id"]
-            db.execute(
-                text(
-                    """
-                    INSERT INTO students (student_id, full_name)
-                    VALUES (:sid, :name)
-                    ON CONFLICT (student_id) DO NOTHING
-                    """
-                ),
-                {"sid": sid, "name": s["full_name"]},
-            )
-
             # Insert 8 terms for each student
             for term_no in TERMS:
                 tid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{sid}-{term_no}"))  # deterministic UUID per student/term
@@ -50,14 +38,15 @@ def seed() -> None:
                 db.execute(
                     text(
                         """
-                        INSERT INTO tuitions (tuition_id, student_id, term_no, amount_due, status, expires_at, payment_id)
-                        VALUES (:tuition_id, :student_id, :term_no, :amount_due, 'UNLOCKED', :expires_at, :payment_id)
+                        INSERT INTO tuitions (tuition_id, student_id, student_full_name, term_no, amount_due, status, expires_at, payment_id)
+                        VALUES (:tuition_id, :student_id, :student_full_name, :term_no, :amount_due, 'UNLOCKED', :expires_at, :payment_id)
                         ON CONFLICT (student_id, term_no) DO NOTHING
                         """
                     ),
                     {
                         "tuition_id": tid,
                         "student_id": sid,
+                        "student_full_name": s["full_name"],
                         "term_no": int(term_no),
                         "amount_due": float(AMOUNT_VND),
                         "expires_at": datetime.utcnow(),

@@ -1,21 +1,15 @@
 -- Tuition Service initial schema (PostgreSQL)
--- Creates students and tuitions tables based on your diagram
+-- Stores per-student tuition per term (students embedded inside tuitions table)
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- students: master data of student identities
-CREATE TABLE IF NOT EXISTS students (
-    student_id text  PRIMARY KEY,
-    full_name  text NOT NULL
-);
-
--- tuitions: per-student tuition per term
 CREATE TABLE IF NOT EXISTS tuitions (
     tuition_id uuid        PRIMARY KEY,
-    student_id text         NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+    student_id text        NOT NULL,
+    student_full_name text NOT NULL,
     term_no    smallint    NOT NULL,
     amount_due numeric     NOT NULL,
-    status     text        NOT NULL DEFAULT 'UNLOCKED', -- UNLOCKED | LOCKED
+    status     text        NOT NULL DEFAULT 'UNLOCKED', -- UNLOCKED | LOCKED | PAID
     expires_at timestamptz,
     payment_id text        UNIQUE
 );

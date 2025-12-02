@@ -82,10 +82,13 @@ services:
       RK_BALANCE_UPDATED: "account.v1.balance_updated"
       RK_BALANCE_RELEASED: "account.v1.balance_released"
       HOLD_EXPIRES_MIN: "15"
+      REDIS_URL: "redis://redis:6379/0"
     depends_on:
       rabbitmq:
         condition: service_healthy
       postgres_account:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - "8081:8080"
